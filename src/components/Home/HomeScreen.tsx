@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Bell, MapPin, Filter, Heart, Plus, MessageCircle, Package, Store, Smartphone, Shirt, MoreHorizontal } from 'lucide-react';
+import { Search, Bell, MapPin, Filter, Heart, Plus, MessageCircle, Package, Store, Smartphone, Shirt, MoreHorizontal, User } from 'lucide-react';
 import { useStore } from '../../hooks/useStore';
 import { Product } from '../../types';
 

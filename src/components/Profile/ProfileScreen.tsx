@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 
 interface ProfileScreenProps {
   onViewProfile?: () => void;
+  onViewStores?: () => void;
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onViewProfile }) => {
@@ -168,14 +169,25 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onViewProfile }) =
             </span>
           </div>
           
-          {/* Ver perfil button */}
-          <button
-            onClick={onViewProfile}
-            className="flex items-center justify-center gap-2 mx-auto px-4 py-2 bg-gray-100 rounded-lg text-gray-700 hover:bg-gray-200 transition-colors"
-          >
-            <span className="text-sm font-medium">Ver perfil</span>
-            <ChevronRight size={16} />
-          </button>
+          {/* Profile Actions */}
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={onViewProfile}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 rounded-lg text-gray-700 hover:bg-gray-200 transition-colors"
+            >
+              <User size={16} />
+              <span className="text-sm font-medium">Ver perfil</span>
+            </button>
+            {user?.role === 'seller' && (
+              <button
+                onClick={onViewStores}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-[#E07A5F] text-white rounded-lg hover:bg-[#E07A5F]/90 transition-colors"
+              >
+                <Store size={16} />
+                <span className="text-sm font-medium">Mis Tiendas</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Seller Mode Toggle */}
@@ -471,10 +483,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onViewProfile }) =
         {/* Logout Button */}
         <button
           onClick={logout}
-          className="w-full flex items-center justify-center gap-2 p-4 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
+          disabled={isLoading}
+          className="w-full flex items-center justify-center gap-2 p-4 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <LogOut size={20} />
-          <span className="font-medium">Cerrar sesión</span>
+          {isLoading ? (
+            <>
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+              <span className="font-medium">Cerrando sesión...</span>
+            </>
+          ) : (
+            <>
+              <LogOut size={20} />
+              <span className="font-medium">Cerrar sesión</span>
+            </>
+          )}
         </button>
       </div>
     </div>

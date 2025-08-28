@@ -6,16 +6,17 @@ import { useAuth } from '../../hooks/useAuth';
 interface CreateProductScreenProps {
   onBack: () => void;
   onProductCreated: () => void;
+  selectedStoreId?: string | null;
 }
 
-export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack, onProductCreated }) => {
+export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack, onProductCreated, selectedStoreId: initialStoreId }) => {
   const [productName, setProductName] = useState('');
   const [productDescription, setProductDescription] = useState('');
   const [productPrice, setProductPrice] = useState('');
   const [productCategory, setProductCategory] = useState('');
   const [productStock, setProductStock] = useState('');
   const [productImages, setProductImages] = useState<string[]>([]);
-  const [selectedStoreId, setSelectedStoreId] = useState('');
+  const [selectedStoreId, setSelectedStoreId] = useState(initialStoreId || '');
   
   const { createProduct, stores, isLoading } = useStore();
   const { user } = useAuth();

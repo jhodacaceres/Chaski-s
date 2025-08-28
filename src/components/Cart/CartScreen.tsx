@@ -2,13 +2,35 @@ import React, { useState } from 'react';
 import { Minus, Plus, ArrowRight } from 'lucide-react';
 import { useStore } from '../../hooks/useStore';
 
+interface CartItem {
+  product: {
+    id: string;
+    name: string;
+    price: number;
+    image: string;
+    description?: string;
+  };
+  quantity: number;
+}
+
 interface CartScreenProps {
   onCheckout: () => void;
 }
 
 export const CartScreen: React.FC<CartScreenProps> = ({ onCheckout }) => {
-  const { cart, updateCartQuantity, removeFromCart, getCartTotal } = useStore();
   const [activeTab, setActiveTab] = useState<'products' | 'description'>('products');
+  const { cart, updateCartQuantity, getCartTotal, products, isLoading } = useStore();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+        <div className="text-center">
+          <div className="w-32 h-32 animate-spin rounded-full border-4 border-[#E07A5F] border-t-transparent"></div>
+          <p className="mt-4 text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
 
   const subtotal = getCartTotal();
   const shipping = 0; // Free shipping
@@ -107,24 +129,35 @@ export const CartScreen: React.FC<CartScreenProps> = ({ onCheckout }) => {
           </div>
         )}
 
-        {/* Related Products */}
-        <div className="mt-8">
-          <h3 className="font-medium text-gray-900 mb-4">Productos relacionados</h3>
-          <div className="grid grid-cols-4 gap-4">
-            {products.slice(0, 4).map((product) => (
-              <div key={product.id} className="text-center">
-                <div className="bg-gray-100 rounded-lg aspect-square flex items-center justify-center mb-2 overflow-hidden">
-                  <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                </div>
-                <p className="text-xs text-gray-600">Producto</p>
-                <p className="text-xs font-medium">${product.price}</p>
-              </div>
-            ))}
+        {activeTab === 'description' && (
+          <div className="py-4 text-gray-600">
+            <p>El carrito de compras es una característica que te permite acumular productos que desees comprar.</p>
           </div>
-          <button className="w-full mt-4 py-2 text-[#E07A5F] font-medium">
-            Buscar más productos
-          </button>
-        </div>
+        )}
+
+        {/* Related Products */}
+        {products ? (
+          products.length > 0 ? (
+            <div className="mt-8">
+              <h3 className="font-medium text-gray-900 mb-4">Productos relacionados</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {products.slice(0, 4).map((product) => (
+                  <div key={product.id} className="text-center">
+                    <div className="bg-gray-100 rounded-lg aspect-square flex items-center justify-center mb-2 overflow-hidden">
+                      <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                    </div>
+                    <p className="text-xs text-gray-600">{product.name}</p>
+                    <p className="text-xs font-medium">${product.price}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-8 text-center text-gray-500">
+              No hay productos relacionados disponibles
+            </div>
+          )
+        ) : null}
       </div>
 
       {/* Summary */}

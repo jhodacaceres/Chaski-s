@@ -11,6 +11,7 @@ interface CreateStoreScreenProps {
 export const CreateStoreScreen: React.FC<CreateStoreScreenProps> = ({ onBack, onStoreCreated }) => {
   const [storeName, setStoreName] = useState('');
   const [storeDescription, setStoreDescription] = useState('');
+  const [storeAddress, setStoreAddress] = useState('');
   const [storeImages, setStoreImages] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState('');
   const [location, setLocation] = useState<[number, number] | null>(null);
@@ -38,14 +39,23 @@ export const CreateStoreScreen: React.FC<CreateStoreScreenProps> = ({ onBack, on
   }, []);
 
   const handleSubmit = async () => {
-    if (!user) {
-      setErrorMessage('Debes iniciar sesión para crear una tienda');
-      return;
-    }
-
+    setErrorMessage('');
+    setIsLoading(true);
+    
     try {
-      setIsLoading(true);
-
+      // Validate required fields
+      if (!storeName.trim()) {
+        setErrorMessage('El nombre de la tienda es requerido');
+        return;
+      }
+      if (!storeAddress.trim()) {
+        setErrorMessage('La dirección de la tienda es requerida');
+        return;
+      }
+      if (!user) {
+        setErrorMessage('Debes iniciar sesión para crear una tienda');
+        return;
+      }
       if (!location) {
         setErrorMessage('No se pudo obtener la ubicación. Asegúrate de permitir el acceso a la ubicación');
         return;
@@ -54,7 +64,7 @@ export const CreateStoreScreen: React.FC<CreateStoreScreenProps> = ({ onBack, on
       await createStore({
         name: storeName.trim(),
         description: storeDescription.trim(),
-        address: '',
+        address: storeAddress.trim(),
         images: storeImages,
         ownerId: user.id,
         coordinates: location,
@@ -64,10 +74,7 @@ export const CreateStoreScreen: React.FC<CreateStoreScreenProps> = ({ onBack, on
       onStoreCreated();
     } catch (error) {
       console.error('Error creating store:', error);
-      const errorMessage = error instanceof Error ? error.message : 'No se pudo crear la tienda. Por favor, intenta de nuevo.';
-      setErrorMessage(errorMessage.includes('policy') 
-        ? 'No tienes permisos para crear una tienda. Asegúrate de ser un vendedor registrado.'
-        : 'No se pudo crear la tienda. Por favor, intenta de nuevo.');
+      setErrorMessage('No se pudo crear la tienda. Por favor, intenta de nuevo.');
     } finally {
       setIsLoading(false);
     }
@@ -120,7 +127,22 @@ export const CreateStoreScreen: React.FC<CreateStoreScreenProps> = ({ onBack, on
           />
         </div>
 
-
+        {/* Store Address */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 bg-gray-200 rounded-lg flex items-center justify-center">
+              <span className="text-sm">📍</span>
+            </div>
+            <span className="font-medium text-gray-900">Dirección</span>
+          </div>
+          <input
+            type="text"
+            placeholder="Dirección de tu tienda"
+            value={storeAddress}
+            onChange={(e) => setStoreAddress(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E07A5F] focus:border-transparent"
+          />
+        </div>
 
         {/* Store Images */}
         <div className="mb-6">
@@ -202,9 +224,9 @@ export const CreateStoreScreen: React.FC<CreateStoreScreenProps> = ({ onBack, on
         {/* Submit Button */}
         <button
           onClick={handleSubmit}
-          disabled={!storeName || !location || isLoading}
+          disabled={!storeName || !storeAddress || !location || isLoading}
           className={`w-full py-4 rounded-xl font-medium text-white ${
-            isLoading || !storeName || !location
+            isLoading || !storeName || !storeAddress || !location
               ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-[#E07A5F] hover:bg-[#D6684D]'
           }`}

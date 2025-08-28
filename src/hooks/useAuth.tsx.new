@@ -30,27 +30,6 @@ export const useAuthProvider = () => {
   const [user, setUser] = useState<User | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [authError, setAuthError] = useState<string | null>(null);
-
-  // Función para establecer un timeout en operaciones de autenticación
-  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
-    let timeoutId: NodeJS.Timeout;
-    
-    const timeoutPromise = new Promise<T>((_, reject) => {
-      timeoutId = setTimeout(() => {
-        reject(new Error('La operación ha excedido el tiempo máximo de espera'));
-      }, timeoutMs);
-    });
-
-    try {
-      const result = await Promise.race([promise, timeoutPromise]);
-      clearTimeout(timeoutId!);
-      return result;
-    } catch (error) {
-      clearTimeout(timeoutId!);
-      throw error;
-    }
-  };
 
   const setUserFromProfile = (profile: {
     id: string;
@@ -198,25 +177,13 @@ export const useAuthProvider = () => {
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
-    setAuthError(null);
     try {
-      const { data, error } = await withTimeout(
-        supabase.auth.signInWithPassword({
-          email,
-          password
-        })
-      );
-      
-      if (error) {
-        setAuthError(error.message);
-        throw error;
-      }
-      
-      if (!data.user) {
-        const noUserError = new Error('No se pudo obtener la información del usuario');
-        setAuthError(noUserError.message);
-        throw noUserError;
-      }
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      if (error) throw error;
+      if (!data.user) throw new Error('No se pudo obtener la información del usuario');
       
       // El perfil se obtendrá automáticamente a través del listener de onAuthStateChange
     } catch (error) {

@@ -12,6 +12,7 @@ import { UserProfileScreen } from './components/Profile/UserProfileScreen';
 import { MessagesScreen } from './components/Messages/MessagesScreen';
 import { CreateStoreScreen } from './components/Store/CreateStoreScreen';
 import { CreateProductScreen } from './components/Products/CreateProductScreen';
+import { MyStoresScreen } from './components/Store/MyStoresScreen';
 import { BottomNavigation } from './components/Layout/BottomNavigation';
 
 function AppContent() {
@@ -22,6 +23,8 @@ function AppContent() {
   const [showCreateStore, setShowCreateStore] = useState(false);
   const [showCreateProduct, setShowCreateProduct] = useState(false);
   const [showViewProfile, setShowViewProfile] = useState(false);
+  const [showMyStores, setShowMyStores] = useState(false);
+  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [userIdToView, setUserIdToView] = useState<string | null>(null);
   const [messageCount] = useState(3); // Mock message count
 
@@ -41,7 +44,10 @@ function AppContent() {
     setShowCreateStore(true);
   };
 
-  const handleCreateProduct = () => {
+  const handleCreateProduct = (storeId?: string) => {
+    if (storeId) {
+      setSelectedStoreId(storeId);
+    }
     setShowCreateProduct(true);
   };
 
@@ -60,7 +66,16 @@ function AppContent() {
 
   const handleProductCreated = () => {
     setShowCreateProduct(false);
-    setCurrentPage('home');
+    setSelectedStoreId(null);
+    setShowMyStores(true);
+  };
+
+  const handleViewMyStores = () => {
+    setShowMyStores(true);
+  };
+
+  const handleBackFromMyStores = () => {
+    setShowMyStores(false);
   };
 
   const handleOpenMessages = () => {
@@ -99,6 +114,21 @@ function AppContent() {
       <CreateProductScreen 
         onBack={handleBackFromCreateProduct}
         onProductCreated={handleProductCreated}
+        selectedStoreId={selectedStoreId}
+      />
+    );
+  }
+
+  if (showMyStores) {
+    return (
+      <MyStoresScreen 
+        onBack={handleBackFromMyStores}
+        onCreateStore={handleCreateStore}
+        onCreateProduct={handleCreateProduct}
+        onEditStore={(store) => {
+          // TODO: Implementar edición de tienda
+          console.log('Edit store:', store);
+        }}
       />
     );
   }
@@ -130,9 +160,20 @@ function AppContent() {
       case 'messages':
         return <MessagesScreen />;
       case 'profile':
-        return <ProfileScreen onViewProfile={handleViewProfile} />;
+        return (
+          <ProfileScreen 
+            onViewProfile={handleViewProfile}
+            onViewStores={handleViewMyStores}
+          />
+        );
       default:
-        return <HomeScreen />;
+        return (
+          <HomeScreen 
+            onOpenMessages={handleOpenMessages}
+            onCreateStore={handleCreateStore}
+            onCreateProduct={handleCreateProduct}
+          />
+        );
     }
   };
 

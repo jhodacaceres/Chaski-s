@@ -7,48 +7,70 @@ export const LoginScreen: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [processingAction, setProcessingAction] = useState(false);
   const { login, loginWithGoogle, loginWithApple, register, isLoading } = useAuth();
 
   // Mock user for demo purposes
   const handleSkipLogin = () => {
-    // This will be handled in the useAuth hook
-    window.localStorage.setItem('skipAuth', 'true');
-    window.location.reload();
+    setProcessingAction(true);
+    try {
+      // This will be handled in the useAuth hook
+      window.localStorage.setItem('skipAuth', 'true');
+      window.location.reload();
+    } catch (error) {
+      setProcessingAction(false);
+      setError('Error al intentar modo demo');
+    }
   };
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setProcessingAction(true);
     
     // Client-side validation
     if (password.length < 6) {
       setError('La contraseña debe tener al menos 6 caracteres.');
+      setProcessingAction(false);
       return;
     }
     
-    if (email && password) {
-      try {
-        if (isSignUp) {
-          await register(email, password, { name, role: 'buyer' });
-        } else {
-          await login(email, password);
-        }
-      } catch (error) {
-        console.error('Authentication error:', error);
-        let errorMessage = 'Error en la autenticación. Por favor, intenta de nuevo.';
-        
-        if (error instanceof Error) {
-          if (error.message.includes('Invalid login credentials')) {
-            errorMessage = 'Credenciales incorrectas. ¿No tienes cuenta? Regístrate primero.';
-          } else if (error.message.includes('User already registered')) {
-            errorMessage = 'Este email ya está registrado. Intenta iniciar sesión.';
-          } else {
-            errorMessage = error.message;
-          }
-        }
-        
-        setError(errorMessage);
+    if (!email || !password) {
+      setError('Por favor ingresa email y contraseña.');
+      setProcessingAction(false);
+      return;
+    }
+
+    try {
+      if (isSignUp && !name) {
+        setError('Por favor ingresa tu nombre.');
+        setProcessingAction(false);
+        return;
       }
+
+      if (isSignUp) {
+        await register(email, password, { name, role: 'buyer' });
+      } else {
+        await login(email, password);
+      }
+    } catch (error) {
+      console.error('Authentication error:', error);
+      let errorMessage = 'Error en la autenticación. Por favor, intenta de nuevo.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Credenciales incorrectas. ¿No tienes cuenta? Regístrate primero.';
+        } else if (error.message.includes('User already registered')) {
+          errorMessage = 'Este email ya está registrado. Intenta iniciar sesión.';
+        } else if (error.message.includes('La operación ha excedido el tiempo máximo de espera')) {
+          errorMessage = 'La operación está tardando demasiado. Por favor, intenta de nuevo.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setError(errorMessage);
+      setProcessingAction(false);
     }
   };
 
@@ -84,7 +106,8 @@ export const LoginScreen: React.FC = () => {
                 placeholder="Nombre completo"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#E07A5F] focus:border-transparent"
+                disabled={isLoading}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#E07A5F] focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             )}
             <input
@@ -92,12 +115,14 @@ export const LoginScreen: React.FC = () => {
               placeholder="email@domain.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#E07A5F] focus:border-transparent"
+              disabled={isLoading}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#E07A5F] focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
             
             <input
               type="password"
-             placeholder="Contraseña (mínimo 6 caracteres)"
+              disabled={isLoading}
+              placeholder="Contraseña (mínimo 6 caracteres)"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#E07A5F] focus:border-transparent"
@@ -105,10 +130,17 @@ export const LoginScreen: React.FC = () => {
             
             <button
               type="submit"
-              disabled={!email || !password || password.length < 6 || (isSignUp && !name) || isLoading}
+              disabled={!email || !password || password.length < 6 || (isSignUp && !name) || isLoading || processingAction}
               className="w-full bg-[#E07A5F] text-white py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#E07A5F]/90 transition-colors"
             >
-              {isLoading ? 'Cargando...' : (isSignUp ? 'Registrarse' : 'Continuar')}
+              {(isLoading || processingAction) ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Cargando...</span>
+                </div>
+              ) : (
+                isSignUp ? 'Registrarse' : 'Continuar'
+              )}
             </button>
           </form>
 
@@ -119,8 +151,18 @@ export const LoginScreen: React.FC = () => {
           {/* Social Login */}
           <div className="space-y-3">
             <button
-              onClick={loginWithGoogle}
-              disabled={isLoading}
+              onClick={async (e) => {
+                e.preventDefault();
+                setProcessingAction(true);
+                try {
+                  await loginWithGoogle();
+                } catch (error) {
+                  console.error('Error logging in with Google:', error);
+                  setError('Error al iniciar sesión con Google');
+                  setProcessingAction(false);
+                }
+              }}
+              disabled={isLoading || processingAction}
               className="w-full flex items-center justify-center gap-3 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -129,18 +171,42 @@ export const LoginScreen: React.FC = () => {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              Continue with Google
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-[#4285F4] border-t-transparent rounded-full animate-spin"></div>
+                  <span>Conectando...</span>
+                </div>
+              ) : (
+                'Continuar con Google'
+              )}
             </button>
 
             <button
-              onClick={loginWithApple}
-              disabled={isLoading}
+              onClick={async (e) => {
+                e.preventDefault();
+                setProcessingAction(true);
+                try {
+                  await loginWithApple();
+                } catch (error) {
+                  console.error('Error logging in with Apple:', error);
+                  setError('Error al iniciar sesión con Apple');
+                  setProcessingAction(false);
+                }
+              }}
+              disabled={isLoading || processingAction}
               className="w-full flex items-center justify-center gap-3 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.174-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.099.12.112.225.085.347-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.402.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.357-.629-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24.009 12.017 24c6.624 0 11.99-5.367 11.99-11.987C24.007 5.367 18.641.001 12.017.001z"/>
+                <path d="M17.543 14.1c-.054 1.292.962 1.925 1.005 1.955-.824 1.173-2.103 1.341-2.56 1.359-1.09.11-2.125-.624-2.683-.624-.557 0-1.416.606-2.329.59-1.195-.02-2.283-.676-2.897-1.712-1.235-2.074-.32-5.134.886-6.815.588-.84 1.29-1.783 2.21-1.75.885.033 1.22.555 2.282.555 1.062 0 1.363-.555 2.291-.537.946.017 1.547.838 2.13 1.68.67.98.945 1.925.962 1.975-.02.006-1.843.687-1.862 2.728M15.03 7.965c.483-.566.81-1.354.722-2.138-.697.028-1.54.452-2.037 1.017-.447.51-.838 1.325-.734 2.107.78.06 1.578-.396 2.049-.986"/>
               </svg>
-              Continuar con Apple
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-gray-700 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Conectando...</span>
+                </div>
+              ) : (
+                'Continuar con Apple'
+              )}
             </button>
           </div>
 
