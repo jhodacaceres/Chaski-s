@@ -7,10 +7,11 @@ interface HomeScreenProps {
   onOpenMessages: () => void;
   onCreateStore: () => void;
   onCreateProduct: () => void;
+  onViewUserProfile?: (userId: string) => void;
   messageCount?: number;
 }
 
-export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreateStore, onCreateProduct, messageCount = 0 }) => {
+export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreateStore, onCreateProduct, onViewUserProfile, messageCount = 0 }) => {
   const { products, addToCart, toggleWishlist, wishlist } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showVenderOptions, setShowVenderOptions] = useState(false);

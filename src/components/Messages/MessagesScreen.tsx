@@ -1,56 +1,68 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Filter, Search, Send } from 'lucide-react';
-
-interface Message {
-  id: string;
-  sender: string;
-  content: string;
-  time: string;
-  isOwn: boolean;
-}
-
-interface Contact {
-  id: string;
-  name: string;
-  lastMessage: string;
-  avatar: string;
-  isOnline: boolean;
-}
+import { ArrowLeft, Filter, Search, Send, User } from 'lucide-react';
+import { useMessages } from '../../hooks/useMessages';
+import { useAuth } from '../../hooks/useAuth';
 
 export const MessagesScreen: React.FC = () => {
-  const [selectedContact, setSelectedContact] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { 
+    conversations, 
+    messages, 
+    isLoading, 
+    currentConversationId,
+    fetchMessages, 
+    sendMessage 
+  } = useMessages();
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
 
-  const contacts: Contact[] = [
-    { id: '1', name: 'Persona 1', lastMessage: 'Hola!', avatar: '👤', isOnline: true },
-    { id: '2', name: 'Persona 1', lastMessage: 'Hola!', avatar: '👤', isOnline: false },
-    { id: '3', name: 'Persona 1', lastMessage: 'Hola!', avatar: '👤', isOnline: true },
-    { id: '4', name: 'Persona 1', lastMessage: 'Hola!', avatar: '👤', isOnline: false },
-    { id: '5', name: 'Persona 1', lastMessage: 'Hola!', avatar: '👤', isOnline: true },
-    { id: '6', name: 'Persona 1', lastMessage: 'Hola!', avatar: '👤', isOnline: false },
-  ];
+  const handleSelectConversation = async (conversationId: string) => {
+    setSelectedConversationId(conversationId);
+    await fetchMessages(conversationId);
+  };
 
-  const messages: Message[] = [
-    { id: '1', sender: 'Helena Hills', content: 'Oh?', time: '9:41 AM', isOwn: false },
-    { id: '2', sender: 'You', content: 'Cool', time: '9:41 AM', isOwn: true },
-    { id: '3', sender: 'Helena Hills', content: 'How does it work?', time: '9:41 AM', isOwn: false },
-    { id: '4', sender: 'You', content: 'You just edit any text to type in the conversation you want to see, and delete any bubbles you don\'t want to see.', time: '9:41 AM', isOwn: true },
-    { id: '5', sender: 'You', content: 'Boom!', time: '9:41 AM', isOwn: true },
-    { id: '6', sender: 'Helena Hills', content: 'Hmmm', time: '9:41 AM', isOwn: false },
-    { id: '7', sender: 'Helena Hills', content: 'I think I get it', time: '9:41 AM', isOwn: false },
-    { id: '8', sender: 'Helena Hills', content: 'Will head to the Help Center if I have more questions tho', time: '9:41 AM', isOwn: false },
-  ];
+  const handleSendMessage = async () => {
+    if (newMessage.trim() && selectedConversationId && !sendingMessage) {
+      setSendingMessage(true);
+      try {
+        await sendMessage(selectedConversationId, newMessage);
+        setNewMessage('');
+      } catch (error) {
+        console.error('Error sending message:', error);
+      } finally {
+        setSendingMessage(false);
+      }
+    }
+  };
 
-  const handleSendMessage = () => {
-    if (newMessage.trim()) {
-      // Here you would typically send the message to your backend
-      console.log('Sending message:', newMessage);
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('es-ES', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
+  const formatDate = (date: Date) => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Hoy';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Ayer';
+    } else {
+      return date.toLocaleDateString('es-ES', { 
+        day: 'numeric', 
+        month: 'short' 
+      });
       setNewMessage('');
     }
   };
 
-  if (selectedContact) {
-    const contact = contacts.find(c => c.id === selectedContact);
+  if (selectedConversationId) {
+    const conversation = conversations.find(c => c.id === selectedConversationId);
     
     return (
       <div className="min-h-screen bg-white flex flex-col">
@@ -59,18 +71,29 @@ export const MessagesScreen: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => setSelectedContact(null)}
+                onClick={() => {
+                  setSelectedConversationId(null);
+                  setMessages([]);
+                }}
                 className="text-gray-600"
               >
                 <ArrowLeft size={24} />
               </button>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center text-lg">
-                  {contact?.avatar}
+                <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden">
+                  {conversation?.otherParticipant.profileImage ? (
+                    <img 
+                      src={conversation.otherParticipant.profileImage} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover" 
+                    />
+                  ) : (
+                    <User size={20} className="text-gray-600" />
+                  )}
                 </div>
                 <div>
-                  <h2 className="font-semibold text-gray-900">{contact?.name}</h2>
-                  <p className="text-sm text-green-500">Active 1hr ago</p>
+                  <h2 className="font-semibold text-gray-900">{conversation?.otherParticipant.name}</h2>
+                  <p className="text-sm text-gray-500">En línea</p>
                 </div>
               </div>
             </div>
@@ -81,37 +104,54 @@ export const MessagesScreen: React.FC = () => {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 px-4 py-4 space-y-4 overflow-y-auto">
-          <div className="text-center">
-            <div className="inline-block bg-[#E07A5F] text-white px-4 py-2 rounded-full text-sm">
-              This is the main chat template
+        <div className="flex-1 px-4 py-4 space-y-4 overflow-y-auto bg-gray-50">
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#E07A5F]"></div>
             </div>
-            <p className="text-gray-500 text-xs mt-2">Nov 30, 2023, 9:41 AM</p>
-          </div>
-
+          ) : messages.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No hay mensajes aún</p>
+              <p className="text-gray-400 text-sm">Envía el primer mensaje</p>
+            </div>
+          ) : (
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${message.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
             >
               <div className="flex items-start gap-2 max-w-xs">
-                {!message.isOwn && (
-                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-sm flex-shrink-0">
-                    👤
+                {message.senderId !== user?.id && (
+                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {conversation?.otherParticipant.profileImage ? (
+                      <img 
+                        src={conversation.otherParticipant.profileImage} 
+                        alt="Profile" 
+                        className="w-full h-full object-cover" 
+                      />
+                    ) : (
+                      <User size={16} className="text-gray-600" />
+                    )}
                   </div>
                 )}
-                <div
-                  className={`px-4 py-2 rounded-2xl ${
-                    message.isOwn
-                      ? 'bg-[#E07A5F] text-white rounded-br-md'
-                      : 'bg-gray-100 text-gray-900 rounded-bl-md'
-                  }`}
-                >
-                  <p className="text-sm">{message.content}</p>
+                <div className="flex flex-col">
+                  <div
+                    className={`px-4 py-2 rounded-2xl ${
+                      message.senderId === user?.id
+                        ? 'bg-[#E07A5F] text-white rounded-br-md'
+                        : 'bg-white text-gray-900 rounded-bl-md shadow-sm'
+                    }`}
+                  >
+                    <p className="text-sm">{message.content}</p>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1 px-2">
+                    {formatTime(message.createdAt)}
+                  </p>
                 </div>
               </div>
             </div>
           ))}
+          )}
         </div>
 
         {/* Message Input */}
@@ -125,16 +165,20 @@ export const MessagesScreen: React.FC = () => {
                 onChange={(e) => setNewMessage(e.target.value)}
                 className="flex-1 bg-transparent outline-none text-gray-900"
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                disabled={sendingMessage}
               />
-              <button className="text-gray-500 ml-2">🎤</button>
               <button className="text-gray-500 ml-2">😊</button>
-              <button className="text-gray-500 ml-2">📷</button>
             </div>
             <button
               onClick={handleSendMessage}
-              className="w-10 h-10 bg-[#E07A5F] text-white rounded-full flex items-center justify-center"
+              disabled={!newMessage.trim() || sendingMessage}
+              className="w-10 h-10 bg-[#E07A5F] text-white rounded-full flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Send size={18} />
+              {sendingMessage ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <Send size={18} />
+              )}
             </button>
           </div>
         </div>
@@ -172,27 +216,57 @@ export const MessagesScreen: React.FC = () => {
 
       {/* Contacts List */}
       <div className="px-4 py-2">
-        {contacts.map((contact) => (
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#E07A5F]"></div>
+          </div>
+        ) : conversations.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No tienes conversaciones</p>
+            <p className="text-gray-400 text-sm">Las conversaciones aparecerán cuando alguien te escriba</p>
+          </div>
+        ) : (
+          conversations.map((conversation) => (
           <button
-            key={contact.id}
-            onClick={() => setSelectedContact(contact.id)}
+            key={conversation.id}
+            onClick={() => handleSelectConversation(conversation.id)}
             className="w-full flex items-center gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors"
           >
             <div className="relative">
-              <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center text-lg">
-                {contact.avatar}
+              <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center overflow-hidden">
+                {conversation.otherParticipant.profileImage ? (
+                  <img 
+                    src={conversation.otherParticipant.profileImage} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <User size={20} className="text-gray-600" />
+                )}
               </div>
-              {contact.isOnline && (
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+              {conversation.unreadCount > 0 && (
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-[#E07A5F] rounded-full flex items-center justify-center">
+                  <span className="text-white text-xs font-medium">
+                    {conversation.unreadCount > 9 ? '9+' : conversation.unreadCount}
+                  </span>
+                </div>
               )}
             </div>
             
             <div className="flex-1 text-left">
-              <h3 className="font-medium text-gray-900">{contact.name}</h3>
-              <p className="text-gray-600 text-sm">{contact.lastMessage}</p>
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-gray-900">{conversation.otherParticipant.name}</h3>
+                <span className="text-xs text-gray-400">
+                  {conversation.lastMessage && formatDate(conversation.lastMessage.createdAt)}
+                </span>
+              </div>
+              <p className="text-gray-600 text-sm truncate">
+                {conversation.lastMessage?.content || 'No hay mensajes'}
+              </p>
             </div>
           </button>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
