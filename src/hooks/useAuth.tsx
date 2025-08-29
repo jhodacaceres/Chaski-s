@@ -147,24 +147,64 @@ export const useAuthProvider = () => {
       return;
     }
 
+    let mounted = true;
+
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSupabaseUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserProfile(session.user.id).then(profile => {
+    const initializeSession = async () => {
+      try {
+        if (!mounted) return;
+
+        // Verificar si hay una sesión almacenada localmente
+        const localAuth = localStorage.getItem('supabase.auth.token');
+        if (!localAuth) {
+          setIsLoading(false);
+          return;
+        }
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        
+        if (session?.user) {
+          setSupabaseUser(session.user);
+          const profile = await fetchUserProfile(session.user.id);
+          
+          if (!mounted) return;
+          
           if (profile) {
             setUserFromProfile(profile, session.user.email || '');
+          } else {
+            // Si no hay perfil y no es un usuario nuevo, hacer logout
+            const isNewUser = session.user.app_metadata?.provider !== 'email';
+            if (!isNewUser) {
+              await logout();
+              return;
+            }
           }
+        } else {
+          // Si no hay sesión pero hay token local, limpiar
+          localStorage.removeItem('supabase.auth.token');
+        }
+      } catch (error) {
+        console.error('Error initializing session:', error);
+        // En caso de error, limpiar el estado
+        setUser(null);
+        setSupabaseUser(null);
+        localStorage.removeItem('supabase.auth.token');
+      } finally {
+        if (mounted) {
           setIsLoading(false);
-        });
-      } else {
-        setIsLoading(false);
+        }
       }
-    });
+    };
 
+    initializeSession();
+    
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       console.log('Auth state changed:', event, session);
+      
+      if (!mounted) return;
+      
       setSupabaseUser(session?.user ?? null);
       
       if (!session?.user) {
@@ -192,6 +232,7 @@ export const useAuthProvider = () => {
     });
 
     return () => {
+      mounted = false;
       subscription?.unsubscribe();
     };
   }, []);
@@ -228,12 +269,15 @@ export const useAuthProvider = () => {
   const loginWithGoogle = async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/`
-        }
-      });
+      const { error } = await withTimeout(
+        supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/`,
+            skipBrowserRedirect: false
+          }
+        })
+      );
       if (error) throw error;
     } catch (error) {
       setIsLoading(false);
@@ -244,12 +288,15 @@ export const useAuthProvider = () => {
   const loginWithApple = async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: {
-          redirectTo: `${window.location.origin}/`
-        }
-      });
+      const { error } = await withTimeout(
+        supabase.auth.signInWithOAuth({
+          provider: 'apple',
+          options: {
+            redirectTo: `${window.location.origin}/`,
+            skipBrowserRedirect: false
+          }
+        })
+      );
       if (error) throw error;
     } catch (error) {
       setIsLoading(false);
@@ -288,14 +335,29 @@ export const useAuthProvider = () => {
   const logout = async () => {
     try {
       setIsLoading(true);
-      localStorage.removeItem('skipAuth');
       
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-
+      // Primero limpiar el estado local
       setUser(null);
       setSupabaseUser(null);
-      window.location.href = '/';
+      localStorage.removeItem('skipAuth');
+      localStorage.removeItem('supabase.auth.token');
+      
+      try {
+        // Intentar hacer logout en Supabase
+        await supabase.auth.signOut();
+      } catch (error) {
+        // Si falla el logout en Supabase, no bloqueamos el proceso
+        console.warn('Error en Supabase signOut:', error);
+      }
+
+      // Limpiar cualquier otra data de la sesión
+      sessionStorage.clear();
+      
+      // Redirigir después de limpiar todo
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
+      
     } catch (error) {
       console.error('Error during logout:', error);
     } finally {

@@ -44,6 +44,8 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
     setProductImages(prev => prev.filter(img => img !== imageUrl));
   };
 
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+
   const handleSubmit = async () => {
     if (!productName || !productPrice || !selectedStoreId || !user) return;
 
@@ -52,13 +54,13 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
         name: productName,
         description: productDescription,
         price: parseFloat(productPrice),
-        image: productImages[0] || '',
-        images: productImages,
+        image: '',  // Se actualizará después de subir las imágenes
+        images: [], // Se actualizará después de subir las imágenes
         storeId: selectedStoreId,
         category: productCategory,
         isActive: true,
         stock: parseInt(productStock) || 0
-      });
+      }, uploadedFiles);
 
       onProductCreated();
     } catch (error) {
@@ -251,8 +253,14 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
               multiple
               className="hidden"
               onChange={(e) => {
-                // In a real app, you would upload these files to your storage service
-                console.log('Files selected:', e.target.files);
+                if (e.target.files) {
+                  const filesArray = Array.from(e.target.files);
+                  setUploadedFiles(filesArray);
+                  
+                  // Mostrar previews de las imágenes
+                  const imageUrls = filesArray.map(file => URL.createObjectURL(file));
+                  setProductImages(imageUrls);
+                }
               }}
             />
           </div>
