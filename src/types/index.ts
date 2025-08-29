@@ -64,17 +64,24 @@ export interface Order {
 
 export interface Message {
   id: string;
+  conversationId: string;
   senderId: string;
-  receiverId: string;
   content: string;
-  timestamp: Date;
   isRead: boolean;
+  createdAt: Date;
 }
 
 export interface Conversation {
   id: string;
-  participants: string[];
+  participant1: string;
+  participant2: string;
   lastMessage: Message;
+  unreadCount: number;
+  otherParticipant: {
+    id: string;
+    name: string;
+    profileImage?: string;
+  };
   updatedAt: Date;
 }
 

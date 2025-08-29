@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './hooks/useAuth.tsx';
 import { useStore } from './hooks/useStore';
+import { useMessages } from './hooks/useMessages';
 import { LoginScreen } from './components/Auth/LoginScreen';
 import { HomeScreen } from './components/Home/HomeScreen';
 import { WishlistScreen } from './components/Wishlist/WishlistScreen';
@@ -18,6 +19,7 @@ import { BottomNavigation } from './components/Layout/BottomNavigation';
 function AppContent() {
   const { user } = useAuth();
   const { getCartItemCount } = useStore();
+  const { getTotalUnreadCount } = useMessages();
   const [currentPage, setCurrentPage] = useState('home');
   const [showCheckout, setShowCheckout] = useState(false);
   const [showCreateStore, setShowCreateStore] = useState(false);
@@ -26,7 +28,6 @@ function AppContent() {
   const [showMyStores, setShowMyStores] = useState(false);
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [userIdToView, setUserIdToView] = useState<string | null>(null);
-  const [messageCount] = useState(3); // Mock message count
 
   if (!user) {
     return <LoginScreen />;
@@ -150,7 +151,7 @@ function AppContent() {
             onCreateStore={handleCreateStore}
             onCreateProduct={handleCreateProduct}
             onViewUserProfile={handleViewUserProfile}
-            messageCount={messageCount}
+            messageCount={getTotalUnreadCount()}
           />
         );
       case 'wishlist':
@@ -172,6 +173,7 @@ function AppContent() {
             onOpenMessages={handleOpenMessages}
             onCreateStore={handleCreateStore}
             onCreateProduct={handleCreateProduct}
+            onViewUserProfile={handleViewUserProfile}
           />
         );
     }

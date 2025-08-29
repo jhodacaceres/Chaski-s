@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Star, MapPin, Phone, Mail, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Star, MapPin, Phone, Mail, MessageCircle, User } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useMessages } from '../../hooks/useMessages';
 import { User, Rating } from '../../types';
 
 interface UserProfileScreenProps {
@@ -11,12 +12,14 @@ interface UserProfileScreenProps {
 
 export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, onBack }) => {
   const { user: currentUser } = useAuth();
+  const { createConversation } = useMessages();
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [userRating, setUserRating] = useState<number>(0);
   const [userComment, setUserComment] = useState<string>('');
   const [existingRating, setExistingRating] = useState<Rating | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -124,6 +127,27 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
     }
   };
 
+  const handleSendMessage = async () => {
+    if (!currentUser || currentUser.id === 'demo-user-id') {
+      setMessage('Función no disponible en modo demo');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
+
+    setIsCreatingConversation(true);
+    try {
+      await createConversation(userId);
+      setMessage('Conversación creada. Ve a la sección de mensajes para chatear.');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      setMessage('Error al crear la conversación');
+      setTimeout(() => setMessage(''), 3000);
+    } finally {
+      setIsCreatingConversation(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -187,7 +211,9 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
             {profileUser.profileImage ? (
               <img src={profileUser.profileImage} alt="Profile" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-3xl text-gray-600">👤</div>
+              <div className="w-full h-full flex items-center justify-center text-gray-600">
+                <User size={32} />
+              </div>
             )}
           </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-1">
@@ -318,9 +344,22 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
         )}
 
         {/* Contact Button */}
-        <button className="w-full bg-[#E07A5F] text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-[#E07A5F]/90 transition-colors">
-          <MessageCircle size={20} />
-          Enviar mensaje
+        <button 
+          onClick={handleSendMessage}
+          disabled={isCreatingConversation}
+          className="w-full bg-[#E07A5F] text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-[#E07A5F]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isCreatingConversation ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Creando conversación...
+            </>
+          ) : (
+            <>
+              <MessageCircle size={20} />
+              Enviar mensaje
+            </>
+          )}
         </button>
       </div>
     </div>
