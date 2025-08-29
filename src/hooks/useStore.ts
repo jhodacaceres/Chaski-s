@@ -481,6 +481,17 @@ export const useStore = () => {
   const toggleWishlist = async (productId: string) => {
     if (!user) return;
 
+    // Skip Supabase operations for demo user
+    if (user.id === 'demo-user-id') {
+      // Handle wishlist locally for demo user
+      if (wishlist.includes(productId)) {
+        setWishlist(prev => prev.filter(id => id !== productId));
+      } else {
+        setWishlist(prev => [...prev, productId]);
+      }
+      return;
+    }
+
     try {
       if (wishlist.includes(productId)) {
         const { error } = await supabase
