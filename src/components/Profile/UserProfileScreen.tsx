@@ -3,7 +3,7 @@ import { ArrowLeft, Star, MapPin, Phone, Mail, MessageCircle, User } from 'lucid
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useMessages } from '../../hooks/useMessages';
-import { User, Rating } from '../../types';
+import { User as UserType, Rating } from '../../types';
 
 interface UserProfileScreenProps {
   userId: string;
@@ -13,7 +13,7 @@ interface UserProfileScreenProps {
 export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, onBack }) => {
   const { user: currentUser } = useAuth();
   const { createConversation } = useMessages();
-  const [profileUser, setProfileUser] = useState<User | null>(null);
+  const [profileUser, setProfileUser] = useState<UserType | null>(null);
   const [userRating, setUserRating] = useState<number>(0);
   const [userComment, setUserComment] = useState<string>('');
   const [existingRating, setExistingRating] = useState<Rating | null>(null);

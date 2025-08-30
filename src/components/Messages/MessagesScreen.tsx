@@ -57,7 +57,6 @@ export const MessagesScreen: React.FC = () => {
         day: 'numeric', 
         month: 'short' 
       });
-      setNewMessage('');
     }
   };
 
@@ -73,7 +72,6 @@ export const MessagesScreen: React.FC = () => {
               <button
                 onClick={() => {
                   setSelectedConversationId(null);
-                  setMessages([]);
                 }}
                 className="text-gray-600"
               >
@@ -115,7 +113,7 @@ export const MessagesScreen: React.FC = () => {
               <p className="text-gray-400 text-sm">Envía el primer mensaje</p>
             </div>
           ) : (
-          {messages.map((message) => (
+            messages.map((message) => (
             <div
               key={message.id}
               className={`flex ${message.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
@@ -150,7 +148,7 @@ export const MessagesScreen: React.FC = () => {
                 </div>
               </div>
             </div>
-          ))}
+            ))
           )}
         </div>
 
