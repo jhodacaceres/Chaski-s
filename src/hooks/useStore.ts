@@ -392,7 +392,7 @@ export const useStore = () => {
         price: data.price,
         image: data.images[0] || "",
         images: data.images || [],
-        storeId: data.store_id || '',
+        storeId: data.store_id,
         category: data.category || "",
         isActive: data.is_active,
         stock: data.stock || 0,

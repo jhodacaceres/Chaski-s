@@ -16,6 +16,7 @@
 -- Make store_id optional for products
 DO $$
 BEGIN
+  -- Drop the foreign key constraint if it exists
   IF EXISTS (
     SELECT 1 FROM information_schema.table_constraints
     WHERE constraint_name = 'products_store_id_fkey'
@@ -23,6 +24,9 @@ BEGIN
   ) THEN
     ALTER TABLE products DROP CONSTRAINT products_store_id_fkey;
   END IF;
+
+  -- Drop the NOT NULL constraint
+  ALTER TABLE products ALTER COLUMN store_id DROP NOT NULL;
 END $$;
 
 -- Add new foreign key constraint that allows NULL

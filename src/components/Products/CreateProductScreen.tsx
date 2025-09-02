@@ -99,7 +99,10 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
       return;
     }
 
-    if (!productName || !productPrice || !selectedStoreId || !user) return;
+    if (!productName || !productPrice || !user) {
+      setErrorMessage('Por favor complete el nombre y precio del producto');
+      return;
+    }
 
     try {
       await createProduct({
@@ -108,9 +111,8 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
         price: parseFloat(productPrice),
         image: productImages[0] || '',
         images: productImages,
-        storeId: selectedStoreId === 'no-store' ? '' : selectedStoreId,
+        storeId: selectedStoreId === 'no-store' ? null : selectedStoreId,
         category: productCategory,
-        isActive: true,
         stock: parseInt(productStock) || 0
       }, uploadedFiles);
 
