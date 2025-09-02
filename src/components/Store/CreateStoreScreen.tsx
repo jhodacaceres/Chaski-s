@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Camera, MapPin, Store, FileText, Image } from 'lucide-react';
+import { ArrowLeft, Camera, MapPin, Store, FileText, Image, Upload, Plus, X } from 'lucide-react';
 import { useStore } from '../../hooks/useStore';
 
 interface CreateStoreScreenProps {
@@ -13,15 +13,95 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
     name: '',
     description: '',
     address: '',
-    images: [] as string[]
+    images: [] as string[],
+    coordinates: [0, 0] as [number, number]
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const sampleImages = [
+    'https://images.pexels.com/photos/1187765/pexels-photo-1187765.jpeg?auto=compress&cs=tinysrgb&w=400',
+    'https://images.pexels.com/photos/190819/pexels-photo-190819.jpeg?auto=compress&cs=tinysrgb&w=400',
+    'https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=400',
+    'https://images.pexels.com/photos/264636/pexels-photo-264636.jpeg?auto=compress&cs=tinysrgb&w=400',
+    'https://images.pexels.com/photos/1005638/pexels-photo-1005638.jpeg?auto=compress&cs=tinysrgb&w=400'
+  ];
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+  };
+
+  const handleAddSampleImage = () => {
+    if (formData.images.length >= 5) {
+      setErrors(prev => ({ ...prev, images: 'Máximo 5 imágenes permitidas' }));
+      return;
+    }
+    
+    const randomImage = sampleImages[Math.floor(Math.random() * sampleImages.length)];
+    if (!formData.images.includes(randomImage)) {
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, randomImage]
+      }));
+    }
+  };
+
+  const handleRemoveImage = (imageUrl: string) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter(img => img !== imageUrl)
+    }));
+    
+    // Also remove from uploaded files if it's a blob URL
+    if (imageUrl.startsWith('blob:')) {
+      const index = formData.images.indexOf(imageUrl);
+      if (index !== -1) {
+        setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+      }
+    }
+  };
+
+  const handleFileUpload = (files: FileList) => {
+    const filesArray = Array.from(files);
+    const maxFiles = 5;
+    const currentCount = formData.images.length;
+    const availableSlots = maxFiles - currentCount;
+    
+    if (availableSlots <= 0) {
+      setErrors(prev => ({ ...prev, images: 'Máximo 5 imágenes permitidas' }));
+      return;
+    }
+    
+    const filesToAdd = filesArray.slice(0, availableSlots);
+    
+    // Validate file types and sizes
+    for (const file of filesToAdd) {
+      if (!file.type.startsWith('image/')) {
+        setErrors(prev => ({ ...prev, images: 'Solo se permiten archivos de imagen' }));
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) { // 5MB
+        setErrors(prev => ({ ...prev, images: 'Las imágenes no deben superar los 5MB' }));
+        return;
+      }
+    }
+    
+    // Clear any previous image errors
+    if (errors.images) {
+      setErrors(prev => ({ ...prev, images: '' }));
+    }
+    
+    // Create preview URLs and store files
+    const newImageUrls = filesToAdd.map(file => URL.createObjectURL(file));
+    setFormData(prev => ({
+      ...prev,
+      images: [...prev.images, ...newImageUrls]
+    }));
+    setUploadedFiles(prev => [...prev, ...filesToAdd]);
   };
 
   const validateForm = () => {
@@ -38,6 +118,10 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
     if (!formData.address.trim()) {
       newErrors.address = 'La dirección es requerida';
     }
+    
+    if (formData.images.length === 0) {
+      newErrors.images = 'Agrega al menos una imagen de la tienda';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -47,10 +131,16 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
     if (!validateForm()) return;
 
     try {
-      await createStore(formData);
+      await createStore({
+        ...formData,
+        ownerId: user?.id || '',
+        isActive: true,
+        createdAt: new Date()
+      });
       onStoreCreated();
     } catch (error) {
       console.error('Error creating store:', error);
+      setErrors(prev => ({ ...prev, submit: 'Error al crear la tienda. Intenta de nuevo.' }));
     }
   };
 
@@ -71,16 +161,73 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
       </div>
 
       <div className="p-4 space-y-6">
-        {/* Store Image */}
+        {/* Store Images */}
         <div className="bg-white rounded-lg p-6">
-          <div className="flex flex-col items-center space-y-4">
-            <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center">
-              <Camera className="w-8 h-8 text-gray-400" />
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Imágenes de la tienda</h3>
+          
+          {/* Image Grid */}
+          {formData.images.length > 0 && (
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {formData.images.map((image, index) => (
+                <div key={index} className="relative aspect-square rounded-lg overflow-hidden">
+                  <img src={image} alt={`Tienda ${index + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => handleRemoveImage(image)}
+                    className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                  {index === 0 && (
+                    <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                      Principal
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-            <button className="text-orange-500 font-medium">
-              Agregar foto de tienda
+          )}
+          
+          {/* Upload Buttons */}
+          <div className="space-y-3">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={formData.images.length >= 5}
+              className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-medium flex items-center justify-center gap-2 hover:border-[#E07A5F] hover:text-[#E07A5F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Upload size={20} />
+              Subir imágenes desde galería
+            </button>
+            
+            <button
+              onClick={handleAddSampleImage}
+              disabled={formData.images.length >= 5}
+              className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-medium flex items-center justify-center gap-2 hover:border-[#E07A5F] hover:text-[#E07A5F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus size={20} />
+              Agregar imagen de muestra
             </button>
           </div>
+          
+          <p className="text-xs text-gray-500 text-center mt-2">
+            Puedes subir hasta 5 imágenes. La primera será la imagen principal.
+          </p>
+          
+          {errors.images && (
+            <p className="text-red-500 text-sm mt-2">{errors.images}</p>
+          )}
+          
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                handleFileUpload(e.target.files);
+              }
+            }}
+          />
         </div>
 
         {/* Store Information */}
@@ -150,34 +297,22 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
               <p className="text-red-500 text-sm mt-1">{errors.address}</p>
             )}
           </div>
-
-          {/* Additional Images */}
-          <div>
-            <div className="flex items-center space-x-3 mb-3">
-              <Image className="w-5 h-5 text-gray-600" />
-              <label className="text-base font-medium text-gray-900">
-                Imágenes adicionales
-              </label>
-            </div>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <Camera className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-500 text-sm">
-                Agrega hasta 5 imágenes de tu tienda
-              </p>
-              <button className="text-orange-500 font-medium mt-2">
-                Seleccionar imágenes
-              </button>
-            </div>
-          </div>
         </div>
+
+        {/* Error Messages */}
+        {errors.submit && (
+          <div className="bg-red-100 border border-red-200 rounded-lg p-3">
+            <p className="text-red-600 text-sm">{errors.submit}</p>
+          </div>
+        )}
 
         {/* Create Button */}
         <button
           onClick={handleSubmit}
-          disabled={loading}
-          className="w-full bg-orange-500 text-white py-4 rounded-lg font-semibold hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isLoading}
+          className="w-full bg-[#E07A5F] text-white py-4 rounded-lg font-semibold hover:bg-[#E07A5F]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? 'Creando tienda...' : 'Crear Tienda'}
+          {isLoading ? 'Creando tienda...' : 'Crear Tienda'}
         </button>
       </div>
     </div>

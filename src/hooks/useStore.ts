@@ -159,10 +159,10 @@ export const useStore = () => {
         .insert({
           name: storeData.name,
           description: storeData.description,
-          images: storeData.images || [],
+          images: storeData.images,
           address: storeData.address,
           owner_id: user.id,
-          coordinates: `(${storeData.coordinates[0]},${storeData.coordinates[1]})`,
+          coordinates: storeData.coordinates ? `(${storeData.coordinates[0]},${storeData.coordinates[1]})` : null,
           is_active: true,
         })
         .select()
@@ -174,7 +174,7 @@ export const useStore = () => {
         id: data.id,
         name: data.name,
         description: data.description || "",
-        images: data.images || [],
+        images: data.images,
         address: data.address,
         ownerId: data.owner_id,
         coordinates: data.coordinates

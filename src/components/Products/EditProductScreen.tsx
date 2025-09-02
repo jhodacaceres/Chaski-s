@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, Camera, Save, X, Plus, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Camera, Save, X, Plus, ChevronDown, Upload } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Product, Store } from '../../types';
 
@@ -27,6 +27,7 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
   const sampleImages = [
     'https://images.pexels.com/photos/1187765/pexels-photo-1187765.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -37,14 +38,57 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
   ];
 
   const handleAddSampleImage = () => {
+    if (productImages.length >= 5) {
+      setMessage('Máximo 5 imágenes permitidas');
+      return;
+    }
+    
     const randomImage = sampleImages[Math.floor(Math.random() * sampleImages.length)];
-    if (!productImages.includes(randomImage) && productImages.length < 3) {
+    if (!productImages.includes(randomImage)) {
       setProductImages(prev => [...prev, randomImage]);
     }
   };
 
   const handleRemoveImage = (imageUrl: string) => {
     setProductImages(prev => prev.filter(img => img !== imageUrl));
+    // Also remove from uploaded files if it's a blob URL
+    if (imageUrl.startsWith('blob:')) {
+      const index = productImages.indexOf(imageUrl);
+      if (index !== -1) {
+        setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+      }
+    }
+  };
+
+  const handleFileUpload = (files: FileList) => {
+    const filesArray = Array.from(files);
+    const maxFiles = 5;
+    const currentCount = productImages.length;
+    const availableSlots = maxFiles - currentCount;
+    
+    if (availableSlots <= 0) {
+      setMessage('Máximo 5 imágenes permitidas');
+      return;
+    }
+    
+    const filesToAdd = filesArray.slice(0, availableSlots);
+    
+    // Validate file types and sizes
+    for (const file of filesToAdd) {
+      if (!file.type.startsWith('image/')) {
+        setMessage('Solo se permiten archivos de imagen');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) { // 5MB
+        setMessage('Las imágenes no deben superar los 5MB');
+        return;
+      }
+    }
+    
+    // Create preview URLs and store files
+    const newImageUrls = filesToAdd.map(file => URL.createObjectURL(file));
+    setProductImages(prev => [...prev, ...newImageUrls]);
+    setUploadedFiles(prev => [...prev, ...filesToAdd]);
   };
 
   const handleSubmit = async () => {
@@ -118,33 +162,66 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
       <div className="px-4 py-6">
         {/* Image Upload Section */}
         <div className="mb-6">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Imágenes del producto</h3>
+          
+          {/* Image Grid */}
           <div className="grid grid-cols-3 gap-3 mb-4">
-            {[0, 1, 2].map((index) => (
+            {[0, 1, 2, 3, 4].map((index) => (
               <div key={index} className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center relative overflow-hidden">
                 {productImages[index] ? (
                   <>
                     <img src={productImages[index]} alt={`Product ${index + 1}`} className="w-full h-full object-cover" />
                     <button
                       onClick={() => handleRemoveImage(productImages[index])}
-                      className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                      className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
                     >
                       <X size={12} />
                     </button>
+                    {index === 0 && (
+                      <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                        Principal
+                      </div>
+                    )}
                   </>
                 ) : (
                   <button
-                    onClick={index === 0 ? () => fileInputRef.current?.click() : handleAddSampleImage}
+                    onClick={() => fileInputRef.current?.click()}
                     className="w-full h-full flex flex-col items-center justify-center text-gray-400 hover:text-gray-600"
                   >
                     <Camera size={20} />
                     <span className="text-xs mt-1">
-                      {index === 0 ? 'Agregar imagen' : 'Imagen opcional'}
+                      {index === 0 ? 'Imagen principal' : 'Imagen adicional'}
                     </span>
                   </button>
                 )}
               </div>
             ))}
           </div>
+          
+          {/* Upload Buttons */}
+          <div className="space-y-3">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={productImages.length >= 5}
+              className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-medium flex items-center justify-center gap-2 hover:border-[#E07A5F] hover:text-[#E07A5F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Upload size={20} />
+              Subir imágenes desde galería
+            </button>
+            
+            <button
+              onClick={handleAddSampleImage}
+              disabled={productImages.length >= 5}
+              className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-medium flex items-center justify-center gap-2 hover:border-[#E07A5F] hover:text-[#E07A5F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus size={20} />
+              Agregar imagen de muestra
+            </button>
+          </div>
+          
+          <p className="text-xs text-gray-500 text-center">
+            Puedes subir hasta 5 imágenes. La primera será la imagen principal.
+          </p>
           
           <input
             ref={fileInputRef}
@@ -153,10 +230,8 @@ export const EditProductScreen: React.FC<EditProductScreenProps> = ({
             multiple
             className="hidden"
             onChange={(e) => {
-              if (e.target.files) {
-                const filesArray = Array.from(e.target.files).slice(0, 3);
-                const imageUrls = filesArray.map(file => URL.createObjectURL(file));
-                setProductImages(imageUrls);
+              if (e.target.files && e.target.files.length > 0) {
+                handleFileUpload(e.target.files);
               }
             }}
           />

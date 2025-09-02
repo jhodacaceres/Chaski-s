@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, Camera, Plus, X, ChevronDown, Store } from 'lucide-react';
+import { ArrowLeft, Camera, Plus, X, ChevronDown, Store, Upload } from 'lucide-react';
 import { useStore } from '../../hooks/useStore';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -18,6 +18,7 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
   const [productImages, setProductImages] = useState<string[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState(initialStoreId || 'no-store');
   const [errorMessage, setErrorMessage] = useState('');
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   
   const { createProduct, stores, isLoading } = useStore();
   const { user } = useAuth();
@@ -32,7 +33,6 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
   ];
 
   const userStores = stores.filter(store => store.ownerId === user?.id);
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
   const handleAddSampleImage = () => {
     const randomImage = sampleImages[Math.floor(Math.random() * sampleImages.length)];
@@ -43,8 +43,45 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
 
   const handleRemoveImage = (imageUrl: string) => {
     setProductImages(prev => prev.filter(img => img !== imageUrl));
+    // Also remove from uploaded files if it's a blob URL
+    if (imageUrl.startsWith('blob:')) {
+      const index = productImages.indexOf(imageUrl);
+      if (index !== -1) {
+        setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+      }
+    }
   };
 
+  const handleFileUpload = (files: FileList) => {
+    const filesArray = Array.from(files);
+    const maxFiles = 5;
+    const currentCount = productImages.length;
+    const availableSlots = maxFiles - currentCount;
+    
+    if (availableSlots <= 0) {
+      setErrorMessage('Máximo 5 imágenes permitidas');
+      return;
+    }
+    
+    const filesToAdd = filesArray.slice(0, availableSlots);
+    
+    // Validate file types and sizes
+    for (const file of filesToAdd) {
+      if (!file.type.startsWith('image/')) {
+        setErrorMessage('Solo se permiten archivos de imagen');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) { // 5MB
+        setErrorMessage('Las imágenes no deben superar los 5MB');
+        return;
+      }
+    }
+    
+    // Create preview URLs and store files
+    const newImageUrls = filesToAdd.map(file => URL.createObjectURL(file));
+    setProductImages(prev => [...prev, ...newImageUrls]);
+    setUploadedFiles(prev => [...prev, ...filesToAdd]);
+  };
   const handleSubmit = async () => {
     setErrorMessage('');
     
@@ -107,9 +144,11 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
       <div className="px-4 py-6">
         {/* Image Upload Section */}
         <div className="mb-6">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Imágenes del producto</h3>
+          
+          {/* Image Grid */}
           <div className="grid grid-cols-3 gap-3 mb-4">
-            {/* Main Image Slots */}
-            {[0, 1, 2].map((index) => (
+            {[0, 1, 2, 3, 4].map((index) => (
               <div key={index} className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center relative overflow-hidden">
                 {productImages[index] ? (
                   <>
@@ -123,18 +162,42 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
                   </>
                 ) : (
                   <button
-                    onClick={index === 0 ? () => fileInputRef.current?.click() : handleAddSampleImage}
+                    onClick={() => fileInputRef.current?.click()}
                     className="w-full h-full flex flex-col items-center justify-center text-gray-400 hover:text-gray-600"
                   >
                     <Camera size={20} />
                     <span className="text-xs mt-1">
-                      {index === 0 ? 'Agregar imagen' : 'Imagen opcional'}
+                      {index === 0 ? 'Imagen principal' : 'Imagen adicional'}
                     </span>
                   </button>
                 )}
               </div>
             ))}
           </div>
+          
+          {/* Upload Buttons */}
+          <div className="space-y-3">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-medium flex items-center justify-center gap-2 hover:border-[#E07A5F] hover:text-[#E07A5F] transition-colors"
+            >
+              <Upload size={20} />
+              Subir imágenes desde galería
+            </button>
+            
+            <button
+              onClick={handleAddSampleImage}
+              disabled={productImages.length >= 5}
+              className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-medium flex items-center justify-center gap-2 hover:border-[#E07A5F] hover:text-[#E07A5F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus size={20} />
+              Agregar imagen de muestra
+            </button>
+          </div>
+          
+          <p className="text-xs text-gray-500 text-center">
+            Puedes subir hasta 5 imágenes. La primera será la imagen principal.
+          </p>
           
           <input
             ref={fileInputRef}
@@ -143,11 +206,8 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
             multiple
             className="hidden"
             onChange={(e) => {
-              if (e.target.files) {
-                const filesArray = Array.from(e.target.files).slice(0, 3);
-                setUploadedFiles(filesArray);
-                const imageUrls = filesArray.map(file => URL.createObjectURL(file));
-                setProductImages(imageUrls);
+              if (e.target.files && e.target.files.length > 0) {
+                handleFileUpload(e.target.files);
               }
             }}
           />
