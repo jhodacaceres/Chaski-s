@@ -4,9 +4,10 @@ import { useStore } from '../../hooks/useStore';
 
 interface CreateStoreScreenProps {
   onBack: () => void;
+  onStoreCreated: () => void;
 }
 
-export default function CreateStoreScreen({ onBack }: CreateStoreScreenProps) {
+export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenProps) {
   const { createStore, loading } = useStore();
   const [formData, setFormData] = useState({
     name: '',
@@ -47,7 +48,7 @@ export default function CreateStoreScreen({ onBack }: CreateStoreScreenProps) {
 
     try {
       await createStore(formData);
-      onBack();
+      onStoreCreated();
     } catch (error) {
       console.error('Error creating store:', error);
     }
