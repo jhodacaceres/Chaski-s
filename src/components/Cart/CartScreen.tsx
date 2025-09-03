@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Minus, Plus, ArrowRight, Check } from 'lucide-react';
+import { Minus, Plus, ArrowRight, Check, X } from 'lucide-react';
 import { useStore } from '../../hooks/useStore';
 
 interface CartItem {
@@ -19,7 +19,7 @@ interface CartScreenProps {
 
 export const CartScreen: React.FC<CartScreenProps> = ({ onCheckout }) => {
   const [activeTab, setActiveTab] = useState<'products' | 'description'>('products');
-  const { cart, updateCartQuantity, getCartTotal, products, isLoading } = useStore();
+  const { cart, updateCartQuantity, removeFromCart, getCartTotal, products, isLoading } = useStore();
   const [cartAnimation, setCartAnimation] = useState<string | null>(null);
 
   const handleQuantityChange = (productId: string, newQuantity: number) => {
@@ -117,7 +117,16 @@ export const CartScreen: React.FC<CartScreenProps> = ({ onCheckout }) => {
                   <p className="text-sm text-gray-500 mb-2">Cantidad: {item.quantity.toString().padStart(2, '0')}</p>
                   
                   <div className="flex items-center justify-between">
-                    <p className="text-[#E07A5F] font-bold text-lg">${item.product.price}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[#E07A5F] font-bold text-lg">${item.product.price}</p>
+                      <button
+                        onClick={() => removeFromCart(item.product.id)}
+                        className="p-1 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                        title="Eliminar del carrito"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
                     
                     <div className="flex items-center gap-2">
                       <button

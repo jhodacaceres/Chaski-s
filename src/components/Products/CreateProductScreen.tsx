@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, Camera, Plus, X, ChevronDown, Store, Upload } from 'lucide-react';
+import { ArrowLeft, Camera, Plus, X, ChevronDown, Store, Upload, MapPin } from 'lucide-react';
 import { useStore } from '../../hooks/useStore';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -19,6 +19,9 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
   const [selectedStoreId, setSelectedStoreId] = useState(initialStoreId || 'no-store');
   const [errorMessage, setErrorMessage] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [pickupLocation, setPickupLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [pickupAddress, setPickupAddress] = useState('');
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   
   const { createProduct, stores, isLoading } = useStore();
   const { user } = useAuth();
@@ -82,6 +85,59 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
     setProductImages(prev => [...prev, ...newImageUrls]);
     setUploadedFiles(prev => [...prev, ...filesToAdd]);
   };
+
+  const getCurrentLocation = () => {
+    setIsGettingLocation(true);
+    setErrorMessage('');
+    
+    if (!navigator.geolocation) {
+      setErrorMessage('La geolocalización no está disponible en este navegador');
+      setIsGettingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setPickupLocation({ lat: latitude, lng: longitude });
+        
+        // Get address from coordinates using reverse geocoding
+        try {
+          const response = await fetch(
+            `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=YOUR_API_KEY&language=es&pretty=1`
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.results && data.results.length > 0) {
+              const address = data.results[0].formatted;
+              setPickupAddress(address);
+            } else {
+              setPickupAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+            }
+          } else {
+            setPickupAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+          }
+        } catch (error) {
+          console.error('Error getting address:', error);
+          setPickupAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+        }
+        
+        setIsGettingLocation(false);
+      },
+      (error) => {
+        console.error('Error getting location:', error);
+        setErrorMessage('No se pudo obtener la ubicación. Por favor, permite el acceso a la ubicación.');
+        setIsGettingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000
+      }
+    );
+  };
+
   const handleSubmit = async () => {
     setErrorMessage('');
     
@@ -96,6 +152,10 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
     }
     if (productImages.length === 0) {
       setErrorMessage('Debes agregar al menos una imagen');
+      return;
+    }
+    if (!pickupLocation) {
+      setErrorMessage('Debes obtener la ubicación de recogida');
       return;
     }
 
@@ -113,7 +173,9 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
         images: productImages,
         storeId: selectedStoreId === 'no-store' ? null : selectedStoreId,
         category: productCategory,
-        stock: parseInt(productStock) || 0
+        stock: parseInt(productStock) || 0,
+        pickupLocation,
+        pickupAddress
       }, uploadedFiles);
 
       onProductCreated();
@@ -309,6 +371,54 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
           )}
         </div>
 
+        {/* Location Section */}
+        <div className="bg-white rounded-lg p-4 mb-6">
+          <h3 className="text-base font-semibold text-gray-900 mb-4">Ubicación de recogida</h3>
+          <p className="text-gray-600 text-sm mb-4">
+            Esta ubicación se usará para que los compradores sepan dónde recoger el producto
+          </p>
+          
+          {!pickupLocation ? (
+            <button
+              onClick={getCurrentLocation}
+              disabled={isGettingLocation}
+              className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-medium flex items-center justify-center gap-2 hover:border-[#E07A5F] hover:text-[#E07A5F] transition-colors disabled:opacity-50"
+            >
+              {isGettingLocation ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                  Obteniendo ubicación...
+                </>
+              ) : (
+                <>
+                  <MapPin size={20} />
+                  Obtener ubicación actual
+                </>
+              )}
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <MapPin size={20} className="text-green-600" />
+                <div className="flex-1">
+                  <p className="font-medium text-green-800">Ubicación obtenida</p>
+                  <p className="text-green-600 text-sm">{pickupAddress}</p>
+                  <p className="text-green-500 text-xs">
+                    Coordenadas: {pickupLocation.lat.toFixed(6)}, {pickupLocation.lng.toFixed(6)}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={getCurrentLocation}
+                disabled={isGettingLocation}
+                className="w-full py-2 text-[#E07A5F] border border-[#E07A5F] rounded-lg hover:bg-[#E07A5F]/10 transition-colors disabled:opacity-50"
+              >
+                {isGettingLocation ? 'Actualizando...' : 'Actualizar ubicación'}
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Stock */}
         <div className="bg-white rounded-lg p-4 mb-6">
           <h3 className="text-base font-semibold text-gray-900 mb-4">Inventario</h3>
@@ -331,7 +441,7 @@ export const CreateProductScreen: React.FC<CreateProductScreenProps> = ({ onBack
         {/* Publish Button */}
         <button
           onClick={handleSubmit}
-          disabled={!productName.trim() || !productPrice || parseFloat(productPrice) <= 0 || productImages.length === 0 || isLoading}
+          disabled={!productName.trim() || !productPrice || parseFloat(productPrice) <= 0 || productImages.length === 0 || !pickupLocation || isLoading}
           className="w-full bg-[#E07A5F] text-white py-4 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#E07A5F]/90 transition-colors"
         >
           {isLoading ? 'Publicando...' : 'Publicar'}

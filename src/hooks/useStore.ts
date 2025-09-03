@@ -327,7 +327,10 @@ export const useStore = () => {
   };
 
   const createProduct = async (
-    productData: Omit<Product, "id" | "isActive">,
+    productData: Omit<Product, "id" | "isActive"> & {
+      pickupLocation?: {lat: number, lng: number};
+      pickupAddress?: string;
+    },
     imageFiles?: File[]
   ) => {
     if (!user)
@@ -347,6 +350,9 @@ export const useStore = () => {
           category: productData.category,
           stock: productData.stock,
           images: [],
+          pickup_location: productData.pickupLocation ? 
+            `(${productData.pickupLocation.lng},${productData.pickupLocation.lat})` : null,
+          pickup_address: productData.pickupAddress || null,
           is_active: true,
         })
         .select()
@@ -444,6 +450,12 @@ export const useStore = () => {
   const removeFromCart = async (productId: string) => {
     if (!user) return;
 
+    // Handle demo user locally
+    if (user.id === 'demo-user-id') {
+      setCart(prev => prev.filter(item => item.product.id !== productId));
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("cart_items")
@@ -462,6 +474,20 @@ export const useStore = () => {
   const updateCartQuantity = async (productId: string, quantity: number) => {
     if (!user) return;
 
+    // Handle demo user locally
+    if (user.id === 'demo-user-id') {
+      if (quantity <= 0) {
+        setCart(prev => prev.filter(item => item.product.id !== productId));
+      } else {
+        setCart(prev => prev.map(item => 
+          item.product.id === productId 
+            ? { ...item, quantity }
+            : item
+        ));
+      }
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("cart_items")
@@ -479,6 +505,12 @@ export const useStore = () => {
 
   const clearCart = async () => {
     if (!user) return;
+
+    // Handle demo user locally
+    if (user.id === 'demo-user-id') {
+      setCart([]);
+      return;
+    }
 
     try {
       const { error } = await supabase

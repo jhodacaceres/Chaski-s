@@ -35,6 +35,8 @@ export interface Product {
   isActive: boolean;
   stock: number;
   userId?: string;
+  pickupLocation?: {lat: number, lng: number};
+  pickupAddress?: string;
 }
 
 export interface CartItem {
