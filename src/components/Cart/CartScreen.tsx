@@ -93,9 +93,6 @@ export const CartScreen: React.FC<CartScreenProps> = ({ onCheckout }) => {
           >
             DESCRIPCIÓN
           </button>
-          <div className="flex-1 text-center py-2 font-medium text-gray-500">
-            PRECIO
-          </div>
         </div>
       </div>
 
