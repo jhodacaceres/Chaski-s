@@ -34,7 +34,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onViewUserProfile,
   messageCount = 0,
 }) => {
-  const { products, addToCart, toggleWishlist, wishlist } = useStore();
+  const { products, stores, addToCart, toggleWishlist, wishlist } = useStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [showVenderOptions, setShowVenderOptions] = useState(false);
   const [showCategoriesOptions, setShowCategoriesOptions] = useState(false);
@@ -234,7 +234,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onViewUserProfile?.(product.storeId);
+                      // Get the store owner ID to view their profile
+                      const store = stores.find(s => s.id === product.storeId);
+                      if (store) {
+                        onViewUserProfile?.(store.ownerId);
+                      }
                     }}
                     className="absolute top-2 left-2 p-2 rounded-full bg-white text-gray-600 hover:bg-gray-100 transition-colors"
                   >

@@ -195,17 +195,8 @@ export const ViewProfileScreen: React.FC<ViewProfileScreenProps> = ({ onBack }) 
           className="w-full bg-[#E07A5F] text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 hover:bg-[#E07A5F]/90 transition-colors"
         >
           <Edit size={20} />
-          Publicar un producto
+          Editar perfil
         </button>
-
-        {/* Product Preview */}
-        <div className="mt-6 bg-white rounded-lg overflow-hidden">
-          <img 
-            src="https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=400" 
-            alt="Product" 
-            className="w-full h-32 object-cover" 
-          />
-        </div>
 
         {/* Edit Mode Actions */}
         {isEditing && (

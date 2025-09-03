@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Star, MapPin, Phone, Mail, MessageCircle, User, Eye } from 'lucide-react';
+import { ArrowLeft, Star, MapPin, Phone, Mail, MessageCircle, User, Eye, Store } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useMessages } from '../../hooks/useMessages';
-import { User as UserType, Rating } from '../../types';
+import { User as UserType, Rating, Store as StoreType, Product } from '../../types';
 
 interface UserProfileScreenProps {
   userId: string;
@@ -14,6 +14,8 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
   const { user: currentUser } = useAuth();
   const { createConversation } = useMessages();
   const [profileUser, setProfileUser] = useState<UserType | null>(null);
+  const [userStores, setUserStores] = useState<StoreType[]>([]);
+  const [userProducts, setUserProducts] = useState<Product[]>([]);
   const [userRating, setUserRating] = useState<number>(0);
   const [userComment, setUserComment] = useState<string>('');
   const [existingRating, setExistingRating] = useState<Rating | null>(null);
@@ -24,6 +26,8 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
 
   useEffect(() => {
     fetchUserProfile();
+    fetchUserStores();
+    fetchUserProducts();
     if (currentUser) {
       fetchExistingRating();
     }
@@ -39,13 +43,10 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
 
       if (error) throw error;
 
-      // Get user email from auth.users
-      const { data: authData } = await supabase.auth.admin.getUserById(userId);
-      
       setProfileUser({
         id: data.id,
         name: data.name || 'Usuario',
-        email: authData.user?.email || '',
+        email: '', // Email is not needed for public profile
         role: data.role,
         profileImage: data.profile_image || undefined,
         ci: data.ci || undefined,
@@ -366,15 +367,6 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
           )}
         </button>
 
-        {/* Product Preview */}
-        <div className="mt-6 bg-white rounded-lg overflow-hidden">
-          <img 
-            src="https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=400" 
-            alt="Product" 
-            className="w-full h-32 object-cover" 
-          />
-        </div>
-      </div>
     </div>
   );
 };
