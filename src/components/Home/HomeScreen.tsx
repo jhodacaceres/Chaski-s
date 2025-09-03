@@ -1,8 +1,23 @@
-import React, { useState } from 'react';
-import { Search, Bell, MapPin, Filter, Heart, Plus, MessageCircle, Package, Store, Smartphone, Shirt, MoreHorizontal, User, Check } from 'lucide-react';
-import { useStore } from '../../hooks/useStore';
-import { Product } from '../../types';
-import { ProductDetailScreen } from '../Products/ProductDetailScreen';
+import React, { useState } from "react";
+import {
+  Search,
+  Bell,
+  MapPin,
+  Filter,
+  Heart,
+  Plus,
+  MessageCircle,
+  Package,
+  Store,
+  Smartphone,
+  Shirt,
+  MoreHorizontal,
+  User,
+  Check,
+} from "lucide-react";
+import { useStore } from "../../hooks/useStore";
+import { Product } from "../../types";
+import { ProductDetailScreen } from "../Products/ProductDetailScreen";
 
 interface HomeScreenProps {
   onOpenMessages: () => void;
@@ -12,9 +27,15 @@ interface HomeScreenProps {
   messageCount?: number;
 }
 
-export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreateStore, onCreateProduct, onViewUserProfile, messageCount = 0 }) => {
+export const HomeScreen: React.FC<HomeScreenProps> = ({
+  onOpenMessages,
+  onCreateStore,
+  onCreateProduct,
+  onViewUserProfile,
+  messageCount = 0,
+}) => {
   const { products, addToCart, toggleWishlist, wishlist } = useStore();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [showVenderOptions, setShowVenderOptions] = useState(false);
   const [showCategoriesOptions, setShowCategoriesOptions] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -22,7 +43,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreate
 
   const handleAddToCart = (product: Product) => {
     addToCart(product);
-    
+
     // Show cart animation
     setCartAnimation(product.id);
     setTimeout(() => {
@@ -30,9 +51,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreate
     }, 2000);
   };
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.description.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredProducts = products.filter(
+    (product) =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (selectedProduct) {
@@ -62,25 +84,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreate
             </button>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-4 mb-4">
           <button className="flex items-center gap-2 text-white/90">
             <MapPin size={16} />
             <span className="text-sm">Cbba</span>
           </button>
-          
+
           {/* Vender Button with Dropdown */}
           <div className="relative">
-            <button 
+            <button
               onClick={() => setShowVenderOptions(!showVenderOptions)}
               className="flex items-center gap-2 bg-white/20 rounded-full px-3 py-1"
             >
               <span className="text-white text-sm">Vender</span>
             </button>
-            
+
             {showVenderOptions && (
               <div className="absolute top-full mt-2 bg-white rounded-lg shadow-lg py-2 min-w-[160px] z-10">
-                <button 
+                <button
                   onClick={() => {
                     setShowVenderOptions(false);
                     onCreateProduct();
@@ -90,7 +112,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreate
                   <Package size={16} />
                   <span className="text-sm">Publicar producto</span>
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setShowVenderOptions(false);
                     onCreateStore();
@@ -106,16 +128,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreate
 
           {/* Categories Button with Dropdown */}
           <div className="relative">
-            <button 
+            <button
               onClick={() => setShowCategoriesOptions(!showCategoriesOptions)}
               className="flex items-center gap-2 text-white/90"
             >
               <span className="text-sm">Categorías</span>
             </button>
-            
+
             {showCategoriesOptions && (
               <div className="absolute top-full mt-2 bg-white rounded-lg shadow-lg py-2 min-w-[140px] z-10">
-                <button 
+                <button
                   onClick={() => {
                     setShowCategoriesOptions(false);
                     // Handle technology category
@@ -125,7 +147,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreate
                   <Smartphone size={16} />
                   <span className="text-sm">Tecnología</span>
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setShowCategoriesOptions(false);
                     // Handle clothing category
@@ -135,7 +157,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreate
                   <Shirt size={16} />
                   <span className="text-sm">Ropa</span>
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setShowCategoriesOptions(false);
                     // Handle other category
@@ -150,14 +172,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreate
           </div>
 
           {/* Messages Button with Counter */}
-          <button 
+          <button
             onClick={onOpenMessages}
             className="relative flex items-center gap-2 text-white/90"
           >
             <MessageCircle size={16} />
             {messageCount > 0 && (
               <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                {messageCount > 9 ? '9+' : messageCount}
+                {messageCount > 9 ? "9+" : messageCount}
               </div>
             )}
           </button>
@@ -169,7 +191,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreate
         {/* Selection Section */}
         <div className="bg-white rounded-t-xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Selección de hoy</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Selección de hoy
+            </h2>
             <button className="flex items-center gap-2 text-gray-600">
               <Filter size={16} />
               <span className="text-sm">Filtrar</span>
@@ -179,8 +203,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreate
           {/* Products Grid */}
           <div className="grid grid-cols-2 gap-4">
             {filteredProducts.map((product) => (
-              <div 
-                key={product.id} 
+              <div
+                key={product.id}
                 className="bg-white rounded-xl border border-gray-200 overflow-hidden cursor-pointer"
                 onClick={() => setSelectedProduct(product)}
               >
@@ -191,18 +215,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreate
                     className="w-full h-32 object-cover"
                   />
                   <button
-                    onClick={() => toggleWishlist(product.id)}
+                    // Esta es la única función onClick que necesitas
                     onClick={(e) => {
-                      e.stopPropagation();
+                      e.stopPropagation(); // Evita que el clic se propague al contenedor principal
                       toggleWishlist(product.id);
                     }}
                     className={`absolute top-2 right-2 p-2 rounded-full ${
                       wishlist.includes(product.id)
-                        ? 'bg-[#E07A5F] text-white'
-                        : 'bg-white text-gray-400'
+                        ? "bg-[#E07A5F] text-white"
+                        : "bg-white text-gray-400"
                     }`}
                   >
-                    <Heart size={16} fill={wishlist.includes(product.id) ? 'white' : 'none'} />
+                    <Heart
+                      size={16}
+                      fill={wishlist.includes(product.id) ? "white" : "none"}
+                    />
                   </button>
                   <button
                     onClick={(e) => {
@@ -214,11 +241,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreate
                     <User size={16} />
                   </button>
                 </div>
-                
+
                 <div className="p-3">
-                  <h3 className="font-medium text-gray-900 text-sm mb-1">{product.name}</h3>
-                  <p className="text-[#E07A5F] font-bold text-lg">${product.price}</p>
-                  
+                  <h3 className="font-medium text-gray-900 text-sm mb-1">
+                    {product.name}
+                  </h3>
+                  <p className="text-[#E07A5F] font-bold text-lg">
+                    ${product.price}
+                  </p>
+
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -228,13 +259,15 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreate
                   >
                     Agregar al carrito
                   </button>
-                  
+
                   {/* Cart Animation */}
                   {cartAnimation === product.id && (
                     <div className="absolute inset-0 bg-green-500 bg-opacity-90 rounded-xl flex items-center justify-center animate-pulse">
                       <div className="text-white text-center">
                         <Check size={24} className="mx-auto mb-1" />
-                        <span className="text-sm font-medium">¡Agregado al carrito!</span>
+                        <span className="text-sm font-medium">
+                          ¡Agregado al carrito!
+                        </span>
                       </div>
                     </div>
                   )}
