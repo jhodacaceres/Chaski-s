@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { supabase } from "../../lib/supabase";
 import {
   Search,
   Bell,
@@ -15,6 +16,7 @@ import {
   User,
   Check,
 } from "lucide-react";
+import { useEffect } from "react";
 import { useStore } from "../../hooks/useStore";
 import { Product } from "../../types";
 import { ProductDetailScreen } from "../Products/ProductDetailScreen";
@@ -40,6 +42,42 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [showCategoriesOptions, setShowCategoriesOptions] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [cartAnimation, setCartAnimation] = useState<string | null>(null);
+  const [productCreators, setProductCreators] = useState<Record<string, string>>({});
+
+  // Fetch product creators when products change
+  useEffect(() => {
+    const fetchProductCreators = async () => {
+      const creatorMap: Record<string, string> = {};
+      
+      for (const product of products) {
+        try {
+          if (product.storeId) {
+            // Product has a store, get store owner
+            const { data: storeData } = await supabase
+              .from('stores')
+              .select('owner_id')
+              .eq('id', product.storeId)
+              .limit(1);
+            
+            if (storeData && storeData.length > 0) {
+              creatorMap[product.id] = storeData[0].owner_id;
+            }
+          } else if (product.userId) {
+            // Product without store, use user_id directly
+            creatorMap[product.id] = product.userId;
+          }
+        } catch (error) {
+          console.error('Error fetching creator for product:', product.id, error);
+        }
+      }
+      
+      setProductCreators(creatorMap);
+    };
+
+    if (products.length > 0) {
+      fetchProductCreators();
+    }
+  }, [products]);
 
   const handleAddToCart = (product: Product) => {
     addToCart(product);
@@ -234,7 +272,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onViewUserProfile?.(product.storeId);
+                      const creatorId = productCreators[product.id];
+                      if (creatorId) {
+                        onViewUserProfile?.(creatorId);
+                      }
                     }}
                     className="absolute top-2 left-2 p-2 rounded-full bg-white text-gray-600 hover:bg-gray-100 transition-colors"
                   >

@@ -249,9 +249,49 @@ export const useAuthProvider = () => {
         if (profile) {
           setUserFromProfile(profile, session.user.email || '');
         } else if (session.user.app_metadata?.provider && session.user.app_metadata.provider !== 'email') {
-          const newProfile = await createOAuthProfile(session.user.id, session.user.user_metadata || {});
-          if (newProfile) {
-            setUserFromProfile(newProfile, session.user.email || '');
+          // For OAuth users, try to create profile or update existing one
+          try {
+            const newProfile = await createOAuthProfile(session.user.id, session.user.user_metadata || {});
+            if (newProfile) {
+              setUserFromProfile(newProfile, session.user.email || '');
+            }
+          } catch (error) {
+            // If profile creation fails, try to update existing profile with OAuth data
+            console.log('Profile creation failed, trying to update existing profile');
+            try {
+              const { data: existingProfile, error: fetchError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .limit(1);
+
+              if (!fetchError && existingProfile && existingProfile.length > 0) {
+                // Update existing profile with OAuth image
+                const { error: updateError } = await supabase
+                  .from('profiles')
+                  .update({
+                    profile_image: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || null,
+                    name: session.user.user_metadata?.full_name || session.user.user_metadata?.name || existingProfile[0].name,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', session.user.id);
+
+                if (!updateError) {
+                  // Fetch updated profile
+                  const { data: updatedProfile } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .limit(1);
+
+                  if (updatedProfile && updatedProfile.length > 0) {
+                    setUserFromProfile(updatedProfile[0], session.user.email || '');
+                  }
+                }
+              }
+            } catch (updateError) {
+              console.error('Error updating OAuth profile:', updateError);
+            }
           }
         }
       } catch (error) {
