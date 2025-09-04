@@ -37,7 +37,15 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No profile found for this user ID
+          setProfileUser(null);
+          setIsLoading(false);
+          return;
+        }
+        throw error;
+      }
 
       // Get user email from auth.users
       const { data: authData } = await supabase.auth.admin.getUserById(userId);
@@ -63,6 +71,9 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
 
   const fetchExistingRating = async () => {
     if (!currentUser) return;
+    
+    // Skip rating queries for demo users to avoid UUID errors
+    if (currentUser.id === 'demo-user-id') return;
 
     try {
       const { data, error } = await supabase
@@ -84,6 +95,13 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
 
   const submitRating = async () => {
     if (!currentUser || !userRating || userRating < 1 || userRating > 5) return;
+    
+    // Skip rating operations for demo users to avoid UUID errors
+    if (currentUser.id === 'demo-user-id') {
+      setMessage('Función no disponible en modo demo');
+      setTimeout(() => setMessage(''), 3000);
+      return;
+    }
 
     setIsSubmittingRating(true);
     try {
