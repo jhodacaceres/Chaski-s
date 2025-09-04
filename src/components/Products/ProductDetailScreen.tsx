@@ -45,24 +45,28 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           .from('stores')
           .select('*')
           .eq('id', product.storeId)
-          .single();
+          .limit(1);
 
-        if (storeError) throw storeError;
+        if (storeError) {
+          console.error('Error fetching store:', storeError);
+        } else if (storeData && storeData.length > 0) {
+          const store = storeData[0];
 
-        const storeInfo: Store = {
-          id: storeData.id,
-          name: storeData.name,
-          description: storeData.description || '',
-          images: storeData.images || [],
-          address: storeData.address,
-          ownerId: storeData.owner_id,
-          coordinates: storeData.coordinates ? [storeData.coordinates.x, storeData.coordinates.y] : [0, 0],
-          isActive: storeData.is_active,
-          createdAt: new Date(storeData.created_at)
-        };
+          const storeInfo: Store = {
+            id: store.id,
+            name: store.name,
+            description: store.description || '',
+            images: store.images || [],
+            address: store.address,
+            ownerId: store.owner_id,
+            coordinates: store.coordinates ? [store.coordinates.x, store.coordinates.y] : [0, 0],
+            isActive: store.is_active,
+            createdAt: new Date(store.created_at)
+          };
 
-        setStore(storeInfo);
-        ownerId = storeData.owner_id;
+          setStore(storeInfo);
+          ownerId = store.owner_id;
+        }
       } else if (product.userId) {
         // For products without stores, use the product's user_id
         ownerId = product.userId;
@@ -74,24 +78,28 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           .from('profiles')
           .select('*')
           .eq('id', ownerId)
-          .single();
+          .limit(1);
 
-        if (ownerError) throw ownerError;
+        if (ownerError) {
+          console.error('Error fetching owner:', ownerError);
+        } else if (ownerData && ownerData.length > 0) {
+          const owner = ownerData[0];
 
-        const ownerInfo: UserType = {
-          id: ownerData.id,
-          name: ownerData.name || 'Usuario',
-          email: '', // We don't need email for display
-          role: ownerData.role,
-          profileImage: ownerData.profile_image || undefined,
-          ci: ownerData.ci || undefined,
-          address: ownerData.address || undefined,
-          phoneNumber: ownerData.phone_number || undefined,
-          averageRating: ownerData.average_rating || 0,
-          totalRatings: ownerData.total_ratings || 0
-        };
+          const ownerInfo: UserType = {
+            id: owner.id,
+            name: owner.name || 'Usuario',
+            email: '', // We don't need email for display
+            role: owner.role,
+            profileImage: owner.profile_image || undefined,
+            ci: owner.ci || undefined,
+            address: owner.address || undefined,
+            phoneNumber: owner.phone_number || undefined,
+            averageRating: owner.average_rating || 0,
+            totalRatings: owner.total_ratings || 0
+          };
 
-        setStoreOwner(ownerInfo);
+          setStoreOwner(ownerInfo);
+        }
       }
     } catch (error) {
       console.error('Error fetching store and owner:', error);
