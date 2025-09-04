@@ -207,7 +207,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onOpenMessages, onCreate
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onViewUserProfile?.(product.storeId);
+                      onViewUserProfile?.(product.userId || product.storeId || '');
                     }}
                     className="absolute top-2 left-2 p-2 rounded-full bg-white text-gray-600 hover:bg-gray-100 transition-colors"
                   >
