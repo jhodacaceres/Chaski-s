@@ -37,52 +37,62 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
   const fetchStoreAndOwner = async () => {
     try {
-      // Fetch store information
-      const { data: storeData, error: storeError } = await supabase
-        .from('stores')
-        .select('*')
-        .eq('id', product.storeId)
-        .single();
+      let ownerId: string | null = null;
 
-      if (storeError) throw storeError;
+      // If product has a store, fetch store information
+      if (product.storeId) {
+        const { data: storeData, error: storeError } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('id', product.storeId)
+          .single();
 
-      const storeInfo: Store = {
-        id: storeData.id,
-        name: storeData.name,
-        description: storeData.description || '',
-        images: storeData.images || [],
-        address: storeData.address,
-        ownerId: storeData.owner_id,
-        coordinates: storeData.coordinates ? [storeData.coordinates.x, storeData.coordinates.y] : [0, 0],
-        isActive: storeData.is_active,
-        createdAt: new Date(storeData.created_at)
-      };
+        if (storeError) throw storeError;
 
-      setStore(storeInfo);
+        const storeInfo: Store = {
+          id: storeData.id,
+          name: storeData.name,
+          description: storeData.description || '',
+          images: storeData.images || [],
+          address: storeData.address,
+          ownerId: storeData.owner_id,
+          coordinates: storeData.coordinates ? [storeData.coordinates.x, storeData.coordinates.y] : [0, 0],
+          isActive: storeData.is_active,
+          createdAt: new Date(storeData.created_at)
+        };
 
-      // Fetch store owner information
-      const { data: ownerData, error: ownerError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', storeData.owner_id)
-        .single();
+        setStore(storeInfo);
+        ownerId = storeData.owner_id;
+      } else if (product.userId) {
+        // For products without stores, use the product's user_id
+        ownerId = product.userId;
+      }
 
-      if (ownerError) throw ownerError;
+      // Fetch owner information
+      if (ownerId) {
+        const { data: ownerData, error: ownerError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', ownerId)
+          .single();
 
-      const ownerInfo: UserType = {
-        id: ownerData.id,
-        name: ownerData.name || 'Usuario',
-        email: '', // We don't need email for display
-        role: ownerData.role,
-        profileImage: ownerData.profile_image || undefined,
-        ci: ownerData.ci || undefined,
-        address: ownerData.address || undefined,
-        phoneNumber: ownerData.phone_number || undefined,
-        averageRating: ownerData.average_rating || 0,
-        totalRatings: ownerData.total_ratings || 0
-      };
+        if (ownerError) throw ownerError;
 
-      setStoreOwner(ownerInfo);
+        const ownerInfo: UserType = {
+          id: ownerData.id,
+          name: ownerData.name || 'Usuario',
+          email: '', // We don't need email for display
+          role: ownerData.role,
+          profileImage: ownerData.profile_image || undefined,
+          ci: ownerData.ci || undefined,
+          address: ownerData.address || undefined,
+          phoneNumber: ownerData.phone_number || undefined,
+          averageRating: ownerData.average_rating || 0,
+          totalRatings: ownerData.total_ratings || 0
+        };
+
+        setStoreOwner(ownerInfo);
+      }
     } catch (error) {
       console.error('Error fetching store and owner:', error);
     } finally {
