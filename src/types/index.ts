@@ -34,7 +34,7 @@ export interface Product {
   category: string;
   isActive: boolean;
   stock: number;
-  userId?: string;
+  userId?: string | null;
   pickupLocation?: {lat: number, lng: number};
   pickupAddress?: string;
 }

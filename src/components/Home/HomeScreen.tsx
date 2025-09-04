@@ -234,11 +234,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      // Get the store owner ID to view their profile
-                      const store = stores.find(s => s.id === product.storeId);
-                      if (store) {
-                        onViewUserProfile?.(store.ownerId);
-                      }
+                      onViewUserProfile?.(product.storeId);
                     }}
                     className="absolute top-2 left-2 p-2 rounded-full bg-white text-gray-600 hover:bg-gray-100 transition-colors"
                   >

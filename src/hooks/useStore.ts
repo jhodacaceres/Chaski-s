@@ -59,6 +59,7 @@ export const useStore = () => {
         image: item.images?.[0] || "",
         images: item.images || [],
         storeId: item.store_id,
+        userId: item.user_id,
         category: item.category || "",
         isActive: item.is_active,
         stock: item.stock || 0,
