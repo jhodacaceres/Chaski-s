@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Camera, MapPin, Store, FileText, Image, Upload, Plus, X } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { ArrowLeft, MapPin, Store, FileText, Upload, Plus, X } from 'lucide-react';
 import { useStore } from '../../hooks/useStore';
+import { useAuth } from '../../hooks/useAuth'; 
 
 interface CreateStoreScreenProps {
   onBack: () => void;
@@ -9,6 +10,7 @@ interface CreateStoreScreenProps {
 
 export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenProps) {
   const { createStore, loading } = useStore();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -20,33 +22,10 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const sampleImages = [
-    'https://images.pexels.com/photos/1187765/pexels-photo-1187765.jpeg?auto=compress&cs=tinysrgb&w=400',
-    'https://images.pexels.com/photos/190819/pexels-photo-190819.jpeg?auto=compress&cs=tinysrgb&w=400',
-    'https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=400',
-    'https://images.pexels.com/photos/264636/pexels-photo-264636.jpeg?auto=compress&cs=tinysrgb&w=400',
-    'https://images.pexels.com/photos/1005638/pexels-photo-1005638.jpeg?auto=compress&cs=tinysrgb&w=400'
-  ];
-
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
-
-  const handleAddSampleImage = () => {
-    if (formData.images.length >= 5) {
-      setErrors(prev => ({ ...prev, images: 'Máximo 5 imágenes permitidas' }));
-      return;
-    }
-    
-    const randomImage = sampleImages[Math.floor(Math.random() * sampleImages.length)];
-    if (!formData.images.includes(randomImage)) {
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, randomImage]
-      }));
     }
   };
 
@@ -56,7 +35,8 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
       images: prev.images.filter(img => img !== imageUrl)
     }));
     
-    // Also remove from uploaded files if it's a blob URL
+    // Si la URL es un 'blob', significa que es un archivo subido por el usuario.
+    // Esta lógica elimina el archivo correspondiente del estado 'uploadedFiles'.
     if (imageUrl.startsWith('blob:')) {
       const index = formData.images.indexOf(imageUrl);
       if (index !== -1) {
@@ -78,7 +58,6 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
     
     const filesToAdd = filesArray.slice(0, availableSlots);
     
-    // Validate file types and sizes
     for (const file of filesToAdd) {
       if (!file.type.startsWith('image/')) {
         setErrors(prev => ({ ...prev, images: 'Solo se permiten archivos de imagen' }));
@@ -90,12 +69,10 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
       }
     }
     
-    // Clear any previous image errors
     if (errors.images) {
       setErrors(prev => ({ ...prev, images: '' }));
     }
     
-    // Create preview URLs and store files
     const newImageUrls = filesToAdd.map(file => URL.createObjectURL(file));
     setFormData(prev => ({
       ...prev,
@@ -107,21 +84,10 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
-    if (!formData.name.trim()) {
-      newErrors.name = 'El nombre de la tienda es requerido';
-    }
-    
-    if (!formData.description.trim()) {
-      newErrors.description = 'La descripción es requerida';
-    }
-    
-    if (!formData.address.trim()) {
-      newErrors.address = 'La dirección es requerida';
-    }
-    
-    if (formData.images.length === 0) {
-      newErrors.images = 'Agrega al menos una imagen de la tienda';
-    }
+    if (!formData.name.trim()) newErrors.name = 'El nombre de la tienda es requerido';
+    if (!formData.description.trim()) newErrors.description = 'La descripción es requerida';
+    if (!formData.address.trim()) newErrors.address = 'La dirección es requerida';
+    if (formData.images.length === 0) newErrors.images = 'Agrega al menos una imagen de la tienda';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -165,7 +131,6 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
         <div className="bg-white rounded-lg p-6">
           <h3 className="text-base font-semibold text-gray-900 mb-4">Imágenes de la tienda</h3>
           
-          {/* Image Grid */}
           {formData.images.length > 0 && (
             <div className="grid grid-cols-3 gap-3 mb-4">
               {formData.images.map((image, index) => (
@@ -187,26 +152,15 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
             </div>
           )}
           
-          {/* Upload Buttons */}
-          <div className="space-y-3">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={formData.images.length >= 5}
-              className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-medium flex items-center justify-center gap-2 hover:border-[#E07A5F] hover:text-[#E07A5F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Upload size={20} />
-              Subir imágenes desde galería
-            </button>
-            
-            <button
-              onClick={handleAddSampleImage}
-              disabled={formData.images.length >= 5}
-              className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-medium flex items-center justify-center gap-2 hover:border-[#E07A5F] hover:text-[#E07A5F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Plus size={20} />
-              Agregar imagen de muestra
-            </button>
-          </div>
+          {/* Upload Button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={formData.images.length >= 5}
+            className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-medium flex items-center justify-center gap-2 hover:border-[#E07A5F] hover:text-[#E07A5F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Upload size={20} />
+            Subir imágenes desde galería
+          </button>
           
           <p className="text-xs text-gray-500 text-center mt-2">
             Puedes subir hasta 5 imágenes. La primera será la imagen principal.
@@ -299,7 +253,6 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
           </div>
         </div>
 
-        {/* Error Messages */}
         {errors.submit && (
           <div className="bg-red-100 border border-red-200 rounded-lg p-3">
             <p className="text-red-600 text-sm">{errors.submit}</p>
@@ -309,10 +262,10 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
         {/* Create Button */}
         <button
           onClick={handleSubmit}
-          disabled={isLoading}
+          disabled={loading}
           className="w-full bg-[#E07A5F] text-white py-4 rounded-lg font-semibold hover:bg-[#E07A5F]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLoading ? 'Creando tienda...' : 'Crear Tienda'}
+          {loading ? 'Creando tienda...' : 'Crear Tienda'}
         </button>
       </div>
     </div>
