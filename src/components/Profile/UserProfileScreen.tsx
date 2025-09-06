@@ -35,35 +35,35 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .limit(1);
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          // No profile found for this user ID
-          setProfileUser(null);
-          setIsLoading(false);
-          return;
-        }
-        throw error;
+        console.error('Error fetching user profile:', error);
+        setProfileUser(null);
+        setIsLoading(false);
+        return;
       }
 
-      // Get user email from auth.users
-      const { data: authData } = await supabase.auth.admin.getUserById(userId);
-      
-      setProfileUser({
-        id: data.id,
-        name: data.name || 'Usuario',
-        email: authData.user?.email || '',
-        role: data.role,
-        profileImage: data.profile_image || undefined,
-        ci: data.ci || undefined,
-        address: data.address || undefined,
-        phoneNumber: data.phone_number || undefined,
-        averageRating: data.average_rating || 0,
-        totalRatings: data.total_ratings || 0
-      });
+      if (data && data.length > 0) {
+        const profile = data[0];
+        setProfileUser({
+          id: profile.id,
+          name: profile.name || 'Usuario',
+          email: '', // We don't need email for display
+          role: profile.role,
+          profileImage: profile.profile_image || undefined,
+          ci: profile.ci || undefined,
+          address: profile.address || undefined,
+          phoneNumber: profile.phone_number || undefined,
+          averageRating: profile.average_rating || 0,
+          totalRatings: profile.total_ratings || 0
+        });
+      } else {
+        setProfileUser(null);
+      }
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      setProfileUser(null);
     } finally {
       setIsLoading(false);
     }

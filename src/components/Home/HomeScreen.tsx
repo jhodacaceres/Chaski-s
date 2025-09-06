@@ -264,23 +264,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                         : "bg-white text-gray-400"
                     }`}
                   >
-                    <Heart
-                      size={16}
-                      fill={wishlist.includes(product.id) ? "white" : "none"}
-                    />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const creatorId = productCreators[product.id];
-                      if (creatorId) {
-                        onViewUserProfile?.(creatorId);
-                      }
-                    }}
-                    className="absolute top-2 left-2 p-2 rounded-full bg-white text-gray-600 hover:bg-gray-100 transition-colors"
-                  >
-                    <User size={16} />
-                  </button>
                 </div>
 
                 <div className="p-3">
@@ -291,15 +274,33 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     ${product.price}
                   </p>
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddToCart(product);
-                    }}
-                    className="w-full mt-2 bg-[#E07A5F] text-white py-2 rounded-lg text-sm font-medium hover:bg-[#E07A5F]/90 transition-colors"
-                  >
-                    Agregar al carrito
-                  </button>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCart(product);
+                      }}
+                      className="flex-1 bg-[#E07A5F] text-white py-2 rounded-lg text-sm font-medium hover:bg-[#E07A5F]/90 transition-colors"
+                    >
+                      Agregar al carrito
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleWishlist(product.id);
+                      }}
+                      className={`p-2 rounded-lg ${
+                        wishlist.includes(product.id)
+                          ? "bg-[#E07A5F] text-white"
+                          : "bg-gray-100 text-gray-400"
+                      }`}
+                    >
+                      <Heart
+                        size={16}
+                        fill={wishlist.includes(product.id) ? "white" : "none"}
+                      />
+                    </button>
+                  </div>
 
                   {/* Cart Animation */}
                   {cartAnimation === product.id && (

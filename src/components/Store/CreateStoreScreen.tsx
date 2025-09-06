@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, MapPin, Store, FileText, Upload, Plus, X } from 'lucide-react';
+import { ArrowLeft, Upload, Plus, X, MapPin, FileText, Store, Phone, ChevronDown } from 'lucide-react';
 import { useStore } from '../../hooks/useStore';
 import { useAuth } from '../../hooks/useAuth'; 
 
@@ -15,6 +15,8 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
     name: '',
     description: '',
     address: '',
+    category: '',
+    phone: '',
     images: [] as string[],
     coordinates: [0, 0] as [number, number]
   });
@@ -86,8 +88,6 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
     
     if (!formData.name.trim()) newErrors.name = 'El nombre de la tienda es requerido';
     if (!formData.description.trim()) newErrors.description = 'La descripción es requerida';
-    if (!formData.address.trim()) newErrors.address = 'La dirección es requerida';
-    if (formData.images.length === 0) newErrors.images = 'Agrega al menos una imagen de la tienda';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -111,70 +111,53 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3">
+      <div className="bg-white border-b border-gray-200 px-4 py-4">
         <div className="flex items-center justify-between">
           <button
             onClick={onBack}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="text-gray-600"
           >
-            <ArrowLeft className="w-6 h-6 text-gray-600" />
+            <ArrowLeft size={24} />
           </button>
-          <h1 className="text-lg font-semibold text-gray-900">Crear Tienda</h1>
-          <div className="w-10" />
+          <h1 className="text-xl font-semibold text-gray-900">Crea tu tienda</h1>
+          <div className="w-6" />
         </div>
       </div>
 
-      <div className="p-4 space-y-6">
-        {/* Store Images */}
-        <div className="bg-white rounded-lg p-6">
-          <h3 className="text-base font-semibold text-gray-900 mb-4">Imágenes de la tienda</h3>
-          
-          {formData.images.length > 0 && (
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {formData.images.map((image, index) => (
-                <div key={index} className="relative aspect-square rounded-lg overflow-hidden">
-                  <img src={image} alt={`Tienda ${index + 1}`} className="w-full h-full object-cover" />
-                  <button
-                    onClick={() => handleRemoveImage(image)}
-                    className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                  >
-                    <X size={12} />
-                  </button>
-                  {index === 0 && (
-                    <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-                      Principal
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          
-          {/* Upload Button */}
+      <div className="px-4 py-6">
+        {/* Upload Image Section */}
+        <div className="mb-8">
+          <div className="w-32 h-32 bg-gray-100 rounded-lg mx-auto mb-4 flex items-center justify-center relative overflow-hidden">
+            {formData.images.length > 0 ? (
+              <>
+                <img src={formData.images[0]} alt="Store" className="w-full h-full object-cover" />
+                <button
+                  onClick={() => handleRemoveImage(formData.images[0])}
+                  className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center"
+                >
+                  <X size={12} />
+                </button>
+              </>
+            ) : (
+              <div className="text-center">
+                <Upload size={32} className="text-gray-400 mx-auto mb-2" />
+                <span className="text-gray-500 text-sm">Agregar logo</span>
+              </div>
+            )}
+          </div>
           <button
             onClick={() => fileInputRef.current?.click()}
-            disabled={formData.images.length >= 5}
-            className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-medium flex items-center justify-center gap-2 hover:border-[#E07A5F] hover:text-[#E07A5F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-medium flex items-center justify-center gap-2 hover:border-[#E07A5F] hover:text-[#E07A5F] transition-colors"
           >
             <Upload size={20} />
-            Subir imágenes desde galería
+            {formData.images.length > 0 ? 'Cambiar imagen' : 'Subir imagen'}
           </button>
-          
-          <p className="text-xs text-gray-500 text-center mt-2">
-            Puedes subir hasta 5 imágenes. La primera será la imagen principal.
-          </p>
-          
-          {errors.images && (
-            <p className="text-red-500 text-sm mt-2">{errors.images}</p>
-          )}
-          
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            multiple
             className="hidden"
             onChange={(e) => {
               if (e.target.files && e.target.files.length > 0) {
@@ -184,72 +167,94 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
           />
         </div>
 
-        {/* Store Information */}
-        <div className="bg-white rounded-lg p-6 space-y-6">
-          {/* Store Name */}
-          <div>
-            <div className="flex items-center space-x-3 mb-3">
-              <Store className="w-5 h-5 text-gray-600" />
-              <label className="text-base font-medium text-gray-900">
-                Nombre de la tienda
-              </label>
+        {/* Form Fields */}
+        <div className="space-y-6">
+          {/* Name */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <Store size={20} className="text-gray-600" />
+              <label className="text-base font-medium text-gray-900">Nombre</label>
             </div>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
-              placeholder="Ingresa el nombre de tu tienda"
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${
-                errors.name ? 'border-red-500' : 'border-gray-300'
-              }`}
+              placeholder="Nombre tu tienda"
+              className="w-full px-0 py-3 border-0 border-b border-gray-200 focus:outline-none focus:border-[#E07A5F] text-gray-900 placeholder-gray-500"
             />
-            {errors.name && (
-              <p className="text-red-500 text-sm mt-1">{errors.name}</p>
-            )}
+            {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
           </div>
 
           {/* Description */}
-          <div>
-            <div className="flex items-center space-x-3 mb-3">
-              <FileText className="w-5 h-5 text-gray-600" />
-              <label className="text-base font-medium text-gray-900">
-                Descripción
-              </label>
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <FileText size={20} className="text-gray-600" />
+              <label className="text-base font-medium text-gray-900">Descripción</label>
             </div>
             <textarea
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              placeholder="Describe tu tienda y lo que vendes"
-              rows={4}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none ${
-                errors.description ? 'border-red-500' : 'border-gray-300'
-              }`}
+              placeholder="Añade una descripción"
+              rows={3}
+              className="w-full px-0 py-3 border-0 border-b border-gray-200 focus:outline-none focus:border-[#E07A5F] text-gray-900 placeholder-gray-500 resize-none"
             />
-            {errors.description && (
-              <p className="text-red-500 text-sm mt-1">{errors.description}</p>
-            )}
+            {errors.description && <p className="text-red-500 text-sm">{errors.description}</p>}
           </div>
 
-          {/* Address */}
-          <div>
-            <div className="flex items-center space-x-3 mb-3">
-              <MapPin className="w-5 h-5 text-gray-600" />
-              <label className="text-base font-medium text-gray-900">
-                Dirección
-              </label>
+          {/* Location */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <MapPin size={20} className="text-gray-600" />
+              <label className="text-base font-medium text-gray-900">Ubicación (opcional)</label>
             </div>
             <input
               type="text"
               value={formData.address}
               onChange={(e) => handleInputChange('address', e.target.value)}
-              placeholder="Ingresa la dirección de tu tienda"
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${
-                errors.address ? 'border-red-500' : 'border-gray-300'
-              }`}
+              placeholder="Dirección de tu tienda"
+              className="w-full px-0 py-3 border-0 border-b border-gray-200 focus:outline-none focus:border-[#E07A5F] text-gray-900 placeholder-gray-500"
             />
-            {errors.address && (
-              <p className="text-red-500 text-sm mt-1">{errors.address}</p>
-            )}
+          </div>
+
+          {/* Category */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="w-5 h-5 bg-gray-600 rounded flex items-center justify-center">
+                <span className="text-white text-xs">📦</span>
+              </div>
+              <label className="text-base font-medium text-gray-900">Categoría</label>
+            </div>
+            <div className="relative">
+              <select
+                value={formData.category}
+                onChange={(e) => handleInputChange('category', e.target.value)}
+                className="w-full px-0 py-3 border-0 border-b border-gray-200 focus:outline-none focus:border-[#E07A5F] text-gray-900 appearance-none bg-transparent"
+              >
+                <option value="">Selecciona una categoría</option>
+                <option value="Tecnología">Tecnología</option>
+                <option value="Ropa">Ropa</option>
+                <option value="Hogar">Hogar</option>
+                <option value="Deportes">Deportes</option>
+                <option value="Alimentación">Alimentación</option>
+                <option value="Otros">Otros</option>
+              </select>
+              <ChevronDown size={16} className="absolute right-0 top-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Phone */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <Phone size={20} className="text-gray-600" />
+              <label className="text-base font-medium text-gray-900">Teléfono (opcional)</label>
+            </div>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => handleInputChange('phone', e.target.value)}
+              placeholder="Añade un número de teléfono"
+              className="w-full px-0 py-3 border-0 border-b border-gray-200 focus:outline-none focus:border-[#E07A5F] text-gray-900 placeholder-gray-500"
+            />
           </div>
         </div>
 
@@ -263,9 +268,9 @@ export function CreateStoreScreen({ onBack, onStoreCreated }: CreateStoreScreenP
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="w-full bg-[#E07A5F] text-white py-4 rounded-lg font-semibold hover:bg-[#E07A5F]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-[#E07A5F] text-white py-4 rounded-xl font-semibold hover:bg-[#E07A5F]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-8"
         >
-          {loading ? 'Creando tienda...' : 'Crear Tienda'}
+          {loading ? 'Creando tienda...' : 'Continuar'}
         </button>
       </div>
     </div>
