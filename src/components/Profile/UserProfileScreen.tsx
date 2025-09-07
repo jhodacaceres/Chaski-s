@@ -31,34 +31,40 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
 
   const fetchUserProfile = async () => {
     try {
+      console.log('Fetching profile for userId:', userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .limit(1);
+        .single();
 
       if (error) {
-        console.error('Error fetching user profile:', error);
-        setProfileUser(null);
-        setIsLoading(false);
-        return;
+        if (error.code === 'PGRST116') {
+          console.error('User profile not found for ID:', userId);
+          setProfileUser(null);
+          setIsLoading(false);
+          return;
+        }
+        throw error;
       }
 
-      if (data && data.length > 0) {
-        const profile = data[0];
+      if (data) {
+        console.log('Profile data found:', data);
         setProfileUser({
-          id: profile.id,
-          name: profile.name || 'Usuario',
+          id: data.id,
+          name: data.name || 'Usuario',
           email: '', // We don't need email for display
-          role: profile.role,
-          profileImage: profile.profile_image || undefined,
-          ci: profile.ci || undefined,
-          address: profile.address || undefined,
-          phoneNumber: profile.phone_number || undefined,
-          averageRating: profile.average_rating || 0,
-          totalRatings: profile.total_ratings || 0
+          role: data.role,
+          profileImage: data.profile_image || undefined,
+          ci: data.ci || undefined,
+          address: data.address || undefined,
+          phoneNumber: data.phone_number || undefined,
+          averageRating: data.average_rating || 0,
+          totalRatings: data.total_ratings || 0
         });
       } else {
+        console.error('No profile data returned for userId:', userId);
         setProfileUser(null);
       }
     } catch (error) {
@@ -75,6 +81,8 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
     // Skip rating queries for demo users to avoid UUID errors
     if (currentUser.id === 'demo-user-id') return;
 
+    console.log('Fetching existing rating for user:', currentUser.id, 'rated user:', userId);
+
     try {
       const { data, error } = await supabase
         .from('ratings')
@@ -84,12 +92,18 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
         .single();
 
       if (data) {
+        console.log('Existing rating found:', data);
         setExistingRating(data);
         setUserRating(data.rating);
         setUserComment(data.comment || '');
+      } else {
+        console.log('No existing rating found');
       }
-    } catch (error) {
+    } catch (error: any) {
       // No existing rating found, which is fine
+      if (error.code !== 'PGRST116') {
+        console.error('Error fetching existing rating:', error);
+      }
     }
   };
 

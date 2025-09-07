@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, ShoppingCart, Heart, User, MessageCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
 
 interface Product {
   id: string;
@@ -29,10 +30,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onViewUserProfile,
   messageCount
 }) => {
+  const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [creatorIds, setCreatorIds] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     fetchProducts();
@@ -54,16 +55,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       if (error) throw error;
 
       setProducts(data || []);
-      
-      // Cache creator IDs
-      const creators: { [key: string]: string } = {};
-      data?.forEach(product => {
-        const creatorId = product.stores?.owner_id || product.user_id;
-        if (creatorId) {
-          creators[product.id] = creatorId;
-        }
-      });
-      setCreatorIds(creators);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -75,10 +66,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleViewCreatorProfile = (productId: string) => {
-    const creatorId = creatorIds[productId];
+  const handleViewCreatorProfile = (product: Product) => {
+    // Get creator ID from store owner or product user_id
+    const creatorId = product.stores?.owner_id || product.user_id;
+    
+    console.log('Product:', product);
+    console.log('Creator ID:', creatorId);
+    
     if (creatorId) {
       onViewUserProfile(creatorId);
+    } else {
+      console.error('No creator ID found for product:', product.id);
     }
   };
 
@@ -211,7 +209,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   />
                   {/* Creator Profile Button */}
                   <button
-                    onClick={() => handleViewCreatorProfile(product.id)}
+                    onClick={() => handleViewCreatorProfile(product)}
                     className="absolute top-2 right-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:bg-white transition-colors"
                   >
                     <User className="w-4 h-4 text-gray-600" />

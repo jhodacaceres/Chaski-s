@@ -89,6 +89,7 @@ function AppContent() {
   };
 
   const handleViewUserProfile = (userId: string) => {
+    console.log('Navigating to user profile with ID:', userId);
     setUserIdToView(userId);
     setShowViewProfile(true);
   };
