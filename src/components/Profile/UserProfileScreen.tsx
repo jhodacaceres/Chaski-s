@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Star, MapPin, Phone, Mail, MessageCircle, User, Eye } from 'lucide-react';
+import { ArrowLeft, Star, MapPin, Phone, Mail, MessageCircle, User, Eye, Edit } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useMessages } from '../../hooks/useMessages';
