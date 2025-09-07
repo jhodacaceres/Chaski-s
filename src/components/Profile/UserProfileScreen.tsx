@@ -58,7 +58,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
           totalRatings: data.total_ratings || 0
         });
       } else {
-        console.error('No profile data returned for userId:', userId);
+        console.log('No profile data found for userId:', userId);
         setProfileUser(null);
       }
     } catch (error) {
