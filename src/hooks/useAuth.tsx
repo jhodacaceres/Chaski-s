@@ -84,13 +84,9 @@ export const useAuthProvider = () => {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          // Profile doesn't exist, this is expected for new OAuth users
-          return null;
-        }
         throw error;
       }
 

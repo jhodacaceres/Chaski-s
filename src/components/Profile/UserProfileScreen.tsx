@@ -37,15 +37,9 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          console.error('User profile not found for ID:', userId);
-          setProfileUser(null);
-          setIsLoading(false);
-          return;
-        }
         throw error;
       }
 
@@ -89,7 +83,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
         .select('*')
         .eq('user_id', currentUser.id)
         .eq('rated_user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (data) {
         console.log('Existing rating found:', data);
@@ -100,10 +94,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
         console.log('No existing rating found');
       }
     } catch (error: any) {
-      // No existing rating found, which is fine
-      if (error.code !== 'PGRST116') {
-        console.error('Error fetching existing rating:', error);
-      }
+      console.error('Error fetching existing rating:', error);
     }
   };
 
