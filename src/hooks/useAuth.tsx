@@ -123,6 +123,32 @@ export const useAuthProvider = () => {
     }
   };
 
+  const createProfileForNewUser = async (userId: string, userMetadata: any, userData?: Partial<User>) => {
+    try {
+      const profileData = {
+        id: userId,
+        name: userData?.name || userMetadata.full_name || userMetadata.name || '',
+        role: (userData?.role || 'buyer') as const,
+        profile_image: userData?.profileImage || userMetadata.avatar_url || userMetadata.picture || null,
+        ci: userData?.ci || null,
+        address: userData?.address || null,
+        phone_number: userData?.phoneNumber || null
+      };
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert(profileData)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating profile for new user:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     let isSubscribed = true;
 
@@ -247,7 +273,7 @@ export const useAuthProvider = () => {
         } else if (session.user.app_metadata?.provider && session.user.app_metadata.provider !== 'email') {
           // For OAuth users, try to create profile or update existing one
           try {
-            const newProfile = await createOAuthProfile(session.user.id, session.user.user_metadata || {});
+            const newProfile = await createProfileForNewUser(session.user.id, session.user.user_metadata || {});
             if (newProfile) {
               setUserFromProfile(newProfile, session.user.email || '');
             }
@@ -288,6 +314,21 @@ export const useAuthProvider = () => {
             } catch (updateError) {
               console.error('Error updating OAuth profile:', updateError);
             }
+          }
+        } else if (event === 'SIGNED_IN') {
+          // For email users who just signed up, create profile if it doesn't exist
+          try {
+            const existingProfile = await fetchUserProfile(session.user.id);
+            if (!existingProfile) {
+              // Get user data from session metadata if available
+              const userData = session.user.user_metadata || {};
+              const newProfile = await createProfileForNewUser(session.user.id, userData, userData);
+              if (newProfile) {
+                setUserFromProfile(newProfile, session.user.email || '');
+              }
+            }
+          } catch (error) {
+            console.error('Error creating profile for new email user:', error);
           }
         }
       } catch (error) {
@@ -393,24 +434,7 @@ export const useAuthProvider = () => {
       }
       if (!data.user) throw new Error('No se pudo crear el usuario');
 
-      // Create profile in database
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        name: userData.name,
-        role: userData.role || 'buyer',
-        profile_image: userData.profileImage,
-        ci: userData.ci,
-        address: userData.address,
-        phone_number: userData.phoneNumber
-      });
-
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
-        // Don't throw here as the user was created successfully
-        // The profile will be created later through the auth state change
-      }
-
-      // El perfil se obtendrá automáticamente a través del listener de onAuthStateChange
+      // Profile will be created automatically through the auth state change listener
     } catch (error) {
       setIsLoading(false);
       throw error;
