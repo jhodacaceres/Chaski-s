@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, ShoppingCart, Heart, User, MessageCircle } from 'lucide-react';
+// Se importa el ícono 'Check' para la animación del carrito
+import { Search, Plus, ShoppingCart, Heart, User, MessageCircle, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -35,9 +36,22 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // --- NUEVOS ESTADOS PARA ANIMACIONES ---
+  // Guarda el ID del producto que se está añadiendo al carrito
+  const [addingToCart, setAddingToCart] = useState<string | null>(null);
+  // Guarda los IDs de los productos en la lista de deseos para una respuesta instantánea
+  const [wishlistItems, setWishlistItems] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     fetchProducts();
   }, []);
+
+  // --- NUEVO USEEFFECT PARA CARGAR LA LISTA DE DESEOS ---
+  useEffect(() => {
+    if (user) {
+      fetchWishlist();
+    }
+  }, [user]);
 
   const fetchProducts = async () => {
     try {
@@ -53,7 +67,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
       setProducts(data || []);
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -62,74 +75,104 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     }
   };
 
+  // --- NUEVA FUNCIÓN PARA OBTENER LA LISTA DE DESEOS ---
+  const fetchWishlist = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('wishlist_items')
+        .select('product_id')
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+
+      const wishlistedIds = new Set(data.map(item => item.product_id));
+      setWishlistItems(wishlistedIds);
+    } catch (error) {
+      console.error('Error fetching wishlist:', error);
+    }
+  };
+
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleViewCreatorProfile = (product: Product) => {
-    // Get creator ID from store owner or product user_id
-    const creatorId = product.stores?.owner_id || product.user_id;
-    
-    console.log('Product:', product);
-    console.log('Creator ID:', creatorId);
-    
-    if (creatorId) {
-      onViewUserProfile(creatorId);
-    } else {
-      console.error('No creator ID found for product:', product.id);
-    }
-  };
+  // --- PASO DE DEPURACIÓN: AÑADE ESTOS CONSOLE.LOG ---
+  console.log("Producto seleccionado:", product);
+  
+  const creatorId = product.stores?.owner_id || product.user_id;
+  console.log("ID del creador extraído:", creatorId);
+  
+  if (creatorId) {
+    onViewUserProfile(creatorId);
+  } else {
+    console.error('No se pudo encontrar el ID del creador para este producto.');
+  }
+};
 
+  // --- FUNCIÓN addToCart ACTUALIZADA CON ANIMACIÓN ---
   const addToCart = async (productId: string) => {
+    if (addingToCart) return; // Evita múltiples clics durante la animación
+
     try {
+      setAddingToCart(productId); // Inicia la animación
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setAddingToCart(null); // Resetea si no hay usuario
+        return;
+      }
 
       const { error } = await supabase
         .from('cart_items')
-        .insert({
-          user_id: user.id,
-          product_id: productId,
-          quantity: 1
-        });
+        .insert({ user_id: user.id, product_id: productId, quantity: 1 });
 
       if (error) throw error;
+
+      // Mantiene el estado de "Agregado" por 1.5 segundos
+      setTimeout(() => {
+        setAddingToCart(null);
+      }, 1500);
+
     } catch (error) {
       console.error('Error adding to cart:', error);
+      setAddingToCart(null); // Resetea el estado en caso de error
     }
   };
 
+  // --- FUNCIÓN toggleWishlist ACTUALIZADA PARA RESPUESTA INSTANTÁNEA ---
   const toggleWishlist = async (productId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Check if already in wishlist
-      const { data: existing } = await supabase
-        .from('wishlist_items')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('product_id', productId)
-        .limit(1);
+      const isWishlisted = wishlistItems.has(productId);
 
-      if (existing && existing.length > 0) {
-        // Remove from wishlist
+      if (isWishlisted) {
+        // Actualiza el estado local primero para una UI instantánea
+        setWishlistItems(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(productId);
+          return newSet;
+        });
+        // Elimina de la base de datos en segundo plano
         await supabase
           .from('wishlist_items')
           .delete()
           .eq('user_id', user.id)
           .eq('product_id', productId);
       } else {
-        // Add to wishlist
+        // Actualiza el estado local primero
+        setWishlistItems(prev => new Set(prev).add(productId));
+        // Inserta en la base de datos en segundo plano
         await supabase
           .from('wishlist_items')
-          .insert({
-            user_id: user.id,
-            product_id: productId
-          });
+          .insert({ user_id: user.id, product_id: productId });
       }
     } catch (error) {
       console.error('Error toggling wishlist:', error);
+      // Opcional: Revertir el cambio de estado si la operación de DB falla
+      fetchWishlist();
     }
   };
 
@@ -167,7 +210,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </button>
           </div>
         </div>
-
         {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -198,52 +240,74 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
-            {filteredProducts.map((product) => (
-              <div key={product.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                {/* Product Image */}
-                <div className="relative aspect-square">
-                  <img
-                    src={product.images[0] || 'https://images.pexels.com/photos/90946/pexels-photo-90946.jpeg'}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                  {/* Creator Profile Button */}
-                  <button
-                    onClick={() => handleViewCreatorProfile(product)}
-                    className="absolute top-2 right-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:bg-white transition-colors"
-                  >
-                    <User className="w-4 h-4 text-gray-600" />
-                  </button>
-                </div>
+            {filteredProducts.map((product) => {
+              // --- VARIABLES PARA CONTROLAR ESTADO DE LOS BOTONES ---
+              const isWishlisted = wishlistItems.has(product.id);
+              const isAdding = addingToCart === product.id;
 
-                {/* Product Info */}
-                <div className="p-3">
-                  <h3 className="font-medium text-gray-900 text-sm mb-1 line-clamp-2">
-                    {product.name}
-                  </h3>
-                  <p className="text-orange-500 font-bold text-lg mb-3">
-                    ${product.price}
-                  </p>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center space-x-2">
+              return (
+                <div key={product.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                  <div className="relative aspect-square">
+                    <img
+                      src={product.images[0] || 'https://images.pexels.com/photos/90946/pexels-photo-90946.jpeg'}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
                     <button
-                      onClick={() => addToCart(product.id)}
-                      className="flex-1 bg-orange-500 text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors flex items-center justify-center"
+                      onClick={() => handleViewCreatorProfile(product)}
+                      className="absolute top-2 right-2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:bg-white transition-colors"
                     >
-                      <ShoppingCart className="w-4 h-4 mr-1" />
-                      Agregar
-                    </button>
-                    <button
-                      onClick={() => toggleWishlist(product.id)}
-                      className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <Heart className="w-4 h-4 text-gray-600" />
+                      <User className="w-4 h-4 text-gray-600" />
                     </button>
                   </div>
+
+                  <div className="p-3">
+                    <h3 className="font-medium text-gray-900 text-sm mb-1 line-clamp-2">
+                      {product.name}
+                    </h3>
+                    <p className="text-orange-500 font-bold text-lg mb-3">
+                      ${product.price}
+                    </p>
+
+                    {/* --- BOTONES DE ACCIÓN CON ANIMACIONES --- */}
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => addToCart(product.id)}
+                        disabled={isAdding}
+                        className={`flex-1 text-white py-2 px-3 rounded-lg text-sm font-medium transition-all duration-300 ease-in-out flex items-center justify-center transform active:scale-95 ${
+                          isAdding
+                            ? 'bg-green-500' // Color de confirmación
+                            : 'bg-orange-500 hover:bg-orange-600'
+                        }`}
+                      >
+                        {isAdding ? (
+                          <>
+                            <Check className="w-4 h-4 mr-1" />
+                            Agregado
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingCart className="w-4 h-4 mr-1" />
+                            Agregar
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => toggleWishlist(product.id)}
+                        className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <Heart
+                          className={`w-4 h-4 transition-all duration-200 ease-in-out transform active:scale-125 ${
+                            isWishlisted ? 'text-red-500' : 'text-gray-600'
+                          }`}
+                          fill={isWishlisted ? 'currentColor' : 'none'}
+                        />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

@@ -1,9 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Star, MapPin, Phone, Mail, MessageCircle, User, Eye, Edit } from 'lucide-react';
+import { ArrowLeft, Star, Phone, MessageCircle, User, Fingerprint } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useMessages } from '../../hooks/useMessages';
 import { User as UserType, Rating } from '../../types';
+
+// --- Definición de tipos para la tienda y productos ---
+interface Store {
+  id: string;
+  name: string;
+  description?: string;
+  image_url?: string;
+  contact_number?: string;
+  location?: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  images: string[];
+}
+
 
 interface UserProfileScreenProps {
   userId: string;
@@ -14,6 +31,8 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
   const { user: currentUser } = useAuth();
   const { createConversation } = useMessages();
   const [profileUser, setProfileUser] = useState<UserType | null>(null);
+  const [userStore, setUserStore] = useState<Store | null>(null);
+  const [storeProducts, setStoreProducts] = useState<Product[]>([]);
   const [userRating, setUserRating] = useState<number>(0);
   const [userComment, setUserComment] = useState<string>('');
   const [existingRating, setExistingRating] = useState<Rating | null>(null);
@@ -23,46 +42,65 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    fetchUserProfile();
+    fetchAllUserData();
+  }, [userId]);
+
+  useEffect(() => {
     if (currentUser) {
       fetchExistingRating();
     }
-  }, [userId, currentUser]);
+  }, [currentUser, userId]);
 
-  const fetchUserProfile = async () => {
+  const fetchAllUserData = async () => {
+    setIsLoading(true);
     try {
-      console.log('Fetching profile for userId:', userId);
-      
-      const { data, error } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
-      if (error) {
-        throw error;
-      }
+      if (profileError) throw profileError;
 
-      if (data) {
-        console.log('Profile data found:', data);
+      if (profileData) {
         setProfileUser({
-          id: data.id,
-          name: data.name || 'Usuario',
-          email: '', // We don't need email for display
-          role: data.role,
-          profileImage: data.profile_image || undefined,
-          ci: data.ci || undefined,
-          address: data.address || undefined,
-          phoneNumber: data.phone_number || undefined,
-          averageRating: data.average_rating || 0,
-          totalRatings: data.total_ratings || 0
+          id: profileData.id,
+          name: profileData.name || 'Usuario',
+          email: '',
+          role: profileData.role,
+          profileImage: profileData.profile_image || undefined,
+          ci: profileData.ci || undefined,
+          address: profileData.address || undefined,
+          phoneNumber: profileData.phone_number || undefined,
+          averageRating: profileData.average_rating || 0,
+          totalRatings: profileData.total_ratings || 0
         });
+
+        const { data: storeData, error: storeError } = await supabase
+          .from('stores')
+          .select('*')
+          .eq('owner_id', profileData.id)
+          .limit(1)
+          .maybeSingle();
+        
+        if (storeError) throw storeError;
+
+        if (storeData) {
+          setUserStore(storeData);
+          const { data: productsData, error: productsError } = await supabase
+            .from('products')
+            .select('id, name, images')
+            .eq('store_id', storeData.id)
+            .limit(4);
+
+          if (productsError) throw productsError;
+          setStoreProducts(productsData || []);
+        }
       } else {
-        console.log('No profile data found for userId:', userId);
         setProfileUser(null);
       }
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('Error fetching user data:', error);
       setProfileUser(null);
     } finally {
       setIsLoading(false);
@@ -71,14 +109,8 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
 
   const fetchExistingRating = async () => {
     if (!currentUser) return;
-    
-    // Skip rating queries for demo users to avoid UUID errors
-    if (currentUser.id === 'demo-user-id') return;
-
-    console.log('Fetching existing rating for user:', currentUser.id, 'rated user:', userId);
-
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('ratings')
         .select('*')
         .eq('user_id', currentUser.id)
@@ -86,12 +118,9 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
         .maybeSingle();
 
       if (data) {
-        console.log('Existing rating found:', data);
         setExistingRating(data);
         setUserRating(data.rating);
         setUserComment(data.comment || '');
-      } else {
-        console.log('No existing rating found');
       }
     } catch (error: any) {
       console.error('Error fetching existing rating:', error);
@@ -100,43 +129,22 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
 
   const submitRating = async () => {
     if (!currentUser || !userRating || userRating < 1 || userRating > 5) return;
-    
-    // Skip rating operations for demo users to avoid UUID errors
-    if (currentUser.id === 'demo-user-id') {
-      setMessage('Función no disponible en modo demo');
-      setTimeout(() => setMessage(''), 3000);
-      return;
-    }
 
     setIsSubmittingRating(true);
     try {
       if (existingRating) {
-        const { error } = await supabase
+        await supabase
           .from('ratings')
-          .update({
-            rating: userRating,
-            comment: userComment,
-            updated_at: new Date().toISOString()
-          })
+          .update({ rating: userRating, comment: userComment, updated_at: new Date().toISOString() })
           .eq('id', existingRating.id);
-
-        if (error) throw error;
         setMessage('Calificación actualizada correctamente');
       } else {
-        const { error } = await supabase
+        await supabase
           .from('ratings')
-          .insert({
-            user_id: currentUser.id,
-            rated_user_id: userId,
-            rating: userRating,
-            comment: userComment
-          });
-
-        if (error) throw error;
+          .insert({ user_id: currentUser.id, rated_user_id: userId, rating: userRating, comment: userComment });
         setMessage('Calificación enviada correctamente');
       }
-
-      await fetchUserProfile();
+      await fetchAllUserData();
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Error submitting rating:', error);
@@ -148,11 +156,7 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
   };
 
   const handleSendMessage = async () => {
-    if (!currentUser || currentUser.id === 'demo-user-id') {
-      setMessage('Función no disponible en modo demo');
-      setTimeout(() => setMessage(''), 3000);
-      return;
-    }
+    if (!currentUser) return;
 
     setIsCreatingConversation(true);
     try {
@@ -171,26 +175,16 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#E07A5F] mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando perfil...</p>
-        </div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#E07A5F]"></div>
       </div>
     );
   }
 
   if (!profileUser) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Usuario no encontrado</p>
-          <button
-            onClick={onBack}
-            className="mt-4 px-4 py-2 bg-[#E07A5F] text-white rounded-lg"
-          >
-            Volver
-          </button>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+        <p className="text-gray-600">Usuario no encontrado</p>
+        <button onClick={onBack} className="mt-4 px-4 py-2 bg-[#E07A5F] text-white rounded-lg">Volver</button>
       </div>
     );
   }
@@ -199,151 +193,102 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white px-4 py-4 flex items-center justify-between border-b border-gray-200">
-        <button onClick={onBack} className="text-gray-600">
-          <ArrowLeft size={24} />
-        </button>
-        <span className="text-red-500 text-sm font-medium">Cbba ⚪</span>
+      <div className="bg-white px-4 py-4 flex items-center border-b border-gray-200">
+        <button onClick={onBack} className="text-gray-600"><ArrowLeft size={24} /></button>
       </div>
 
-      {/* Success/Error Messages */}
       {message && (
-        <div className={`mx-4 mt-4 p-3 rounded-lg ${
-          message.includes('Error') ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-        }`}>
+        <div className={`mx-4 mt-4 p-3 rounded-lg ${message.includes('Error') ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
           <p className="text-sm">{message}</p>
         </div>
       )}
 
-      {/* Profile Section */}
       <div className="px-4 py-6">
-        {/* Profile Image and Name */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 bg-gray-400 rounded-full mx-auto mb-4 overflow-hidden">
             {profileUser.profileImage ? (
               <img src={profileUser.profileImage} alt="Profile" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-white">
-                <User size={32} />
-              </div>
+              <div className="w-full h-full flex items-center justify-center bg-gray-300 text-white"><User size={32} /></div>
             )}
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-1">
-            {profileUser.name}
-          </h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-1">{profileUser.name}</h2>
           <div className="flex items-center justify-center gap-1 mb-2">
             {[...Array(5)].map((_, i) => (
-              <Star 
-                key={i} 
-                size={14} 
-                className={`${
-                  i < Math.floor(profileUser.averageRating || 0) 
-                    ? 'text-yellow-400 fill-yellow-400' 
-                    : 'text-gray-300'
-                }`} 
-              />
+              <Star key={i} size={14} className={`${i < Math.floor(profileUser.averageRating || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
             ))}
-            <span className="text-gray-500 text-xs ml-1">
-              {(profileUser.averageRating || 0).toFixed(1)} ({profileUser.totalRatings || 0} reseñas)
-            </span>
+            <span className="text-gray-500 text-xs ml-1">{(profileUser.averageRating || 0).toFixed(1)} ({profileUser.totalRatings || 0} reseñas)</span>
           </div>
         </div>
 
-        {/* Information Section */}
         <div className="mb-8">
           <h3 className="text-base font-semibold text-gray-900 mb-4">Información</h3>
-          
           <div className="space-y-3">
-            {/* Phone */}
             <div className="flex items-center justify-between p-3 bg-white rounded-lg">
               <div className="flex items-center gap-3">
                 <Phone size={16} className="text-gray-600" />
                 <div>
                   <p className="text-sm font-medium text-gray-900">Número de teléfono</p>
-                  <p className="text-gray-600 text-sm">{profileUser.phoneNumber || '74532345'}</p>
+                  <p className="text-gray-600 text-sm">{profileUser.phoneNumber || 'No proporcionado'}</p>
                 </div>
-              </div>
-              <button className="text-gray-400">
-                <Eye size={16} />
-              </button>
-            </div>
-
-            {/* Description */}
-            <div className="p-3 bg-white rounded-lg">
-              <div className="flex items-center gap-3">
-                <Edit size={16} className="text-gray-600" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Descripción</p>
-                  <p className="text-gray-600 text-sm">Añade una descripción</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Store Section */}
-        <div className="mb-8">
-          <h3 className="text-base font-semibold text-gray-900 mb-4">Tienda</h3>
-          
-          <div className="bg-white rounded-lg p-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden">
-                <img 
-                  src="https://images.pexels.com/photos/1187765/pexels-photo-1187765.jpeg?auto=compress&cs=tinysrgb&w=100" 
-                  alt="Store" 
-                  className="w-full h-full object-cover" 
-                />
-              </div>
-              <div className="flex-1">
-                <h4 className="font-medium text-gray-900">Nombre de la tienda</h4>
-                <p className="text-gray-600 text-sm">Descripción de la tienda</p>
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-              <div>
-                <p className="font-medium">Número de contacto</p>
-                <p>74532345</p>
-              </div>
-              <div>
-                <p className="font-medium">Ubicación</p>
-                <p>Av. Aroma</p>
+            <div className="p-3 bg-white rounded-lg">
+              <div className="flex items-center gap-3">
+                <Fingerprint size={16} className="text-gray-600" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Cédula de Identidad</p>
+                  <p className="text-gray-600 text-sm">{profileUser.ci || 'No proporcionado'}</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Rating Section */}
+        {userStore && (
+          <div className="mb-8">
+            <h3 className="text-base font-semibold text-gray-900 mb-4">Tienda</h3>
+            <div className="bg-white rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden">
+                  <img src={userStore.image_url || 'https://via.placeholder.com/100'} alt="Store" className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-medium text-gray-900">{userStore.name}</h4>
+                  <p className="text-gray-600 text-sm">{userStore.description || 'Sin descripción de tienda.'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                <div>
+                  <p className="font-medium">Número de contacto</p>
+                  <p>{userStore.contact_number || 'No disponible'}</p>
+                </div>
+                <div>
+                  <p className="font-medium">Ubicación</p>
+                  <p>{userStore.location || 'No disponible'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {canRate && (
           <div className="mb-8">
             <h3 className="text-base font-semibold text-gray-900 mb-4">
               {existingRating ? 'Tu calificación' : 'Calificar usuario'}
             </h3>
-            
             <div className="bg-white rounded-lg p-4">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-sm font-medium text-gray-700">Calificación:</span>
                 <div className="flex gap-1">
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      onClick={() => setUserRating(star)}
-                      className="transition-colors"
-                    >
-                      <Star
-                        size={20}
-                        className={`${
-                          star <= userRating
-                            ? 'text-yellow-400 fill-yellow-400'
-                            : 'text-gray-300 hover:text-yellow-200'
-                        }`}
-                      />
+                    <button key={star} onClick={() => setUserRating(star)} className="transition-colors">
+                      <Star size={20} className={`${star <= userRating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 hover:text-yellow-200'}`} />
                     </button>
                   ))}
                 </div>
               </div>
-
               <div className="mb-4">
                 <textarea
                   value={userComment}
@@ -353,24 +298,17 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E07A5F] focus:border-transparent resize-none text-sm"
                 />
               </div>
-
               <button
                 onClick={submitRating}
                 disabled={!userRating || isSubmittingRating}
                 className="w-full bg-[#E07A5F] text-white py-2 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#E07A5F]/90 transition-colors text-sm"
               >
-                {isSubmittingRating 
-                  ? 'Enviando...' 
-                  : existingRating 
-                    ? 'Actualizar calificación' 
-                    : 'Enviar calificación'
-                }
+                {isSubmittingRating ? 'Enviando...' : existingRating ? 'Actualizar calificación' : 'Enviar calificación'}
               </button>
             </div>
           </div>
         )}
 
-        {/* Contact Button */}
         <button 
           onClick={handleSendMessage}
           disabled={isCreatingConversation}
@@ -389,14 +327,22 @@ export const UserProfileScreen: React.FC<UserProfileScreenProps> = ({ userId, on
           )}
         </button>
 
-        {/* Product Preview */}
-        <div className="mt-6 bg-white rounded-lg overflow-hidden">
-          <img 
-            src="https://images.pexels.com/photos/1598505/pexels-photo-1598505.jpeg?auto=compress&cs=tinysrgb&w=400" 
-            alt="Product" 
-            className="w-full h-32 object-cover" 
-          />
-        </div>
+        {storeProducts.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-base font-semibold text-gray-900 mb-4">Productos de la tienda</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {storeProducts.map(product => (
+                <div key={product.id} className="bg-white rounded-lg overflow-hidden aspect-square">
+                  <img 
+                    src={product.images[0] || 'https://via.placeholder.com/150'} 
+                    alt={product.name}
+                    className="w-full h-full object-cover" 
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

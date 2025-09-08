@@ -172,6 +172,7 @@ function AppContent() {
             onCreateStore={handleCreateStore}
             onCreateProduct={handleCreateProduct}
             onViewUserProfile={handleViewUserProfile}
+            messageCount={getTotalUnreadCount()}
           />
         );
     }

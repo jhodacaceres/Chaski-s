@@ -101,7 +101,7 @@ export const useMessages = () => {
             .eq('conversation_id', conv.id)
             .order('created_at', { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle()
 
           // Get unread count
           const { count: unreadCount } = await supabase
