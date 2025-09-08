@@ -41,13 +41,13 @@ export const LoginScreen: React.FC = () => {
       return;
     }
 
-    try {
-      if (isSignUp && !name) {
-        setError('Por favor ingresa tu nombre.');
-        setProcessingAction(false);
-        return;
-      }
+    if (isSignUp && !name.trim()) {
+      setError('Por favor ingresa tu nombre.');
+      setProcessingAction(false);
+      return;
+    }
 
+    try {
       if (isSignUp) {
         await register(email, password, { name, role: 'buyer' });
       } else {
@@ -62,6 +62,10 @@ export const LoginScreen: React.FC = () => {
           errorMessage = 'Credenciales incorrectas. ¿No tienes cuenta? Regístrate primero.';
         } else if (error.message.includes('User already registered')) {
           errorMessage = 'Este email ya está registrado. Intenta iniciar sesión.';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Por favor confirma tu email antes de iniciar sesión.';
+        } else if (error.message.includes('Signup not allowed')) {
+          errorMessage = 'El registro no está permitido en este momento.';
         } else if (error.message.includes('La operación ha excedido el tiempo máximo de espera')) {
           errorMessage = 'La operación está tardando demasiado. Por favor, intenta de nuevo.';
         } else {
@@ -130,7 +134,7 @@ export const LoginScreen: React.FC = () => {
             
             <button
               type="submit"
-              disabled={!email || !password || password.length < 6 || (isSignUp && !name) || isLoading || processingAction}
+              disabled={!email || !password || password.length < 6 || (isSignUp && !name.trim()) || isLoading || processingAction}
               className="w-full bg-[#E07A5F] text-white py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#E07A5F]/90 transition-colors"
             >
               {(isLoading || processingAction) ? (

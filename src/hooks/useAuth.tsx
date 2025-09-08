@@ -373,16 +373,28 @@ export const useAuthProvider = () => {
 
   const register = async (email: string, password: string, userData: Partial<User>) => {
     setIsLoading(true);
+    setAuthError(null);
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await withTimeout(
+        supabase.auth.signUp({
         email,
-        password
-      });
+        password,
+        options: {
+          data: {
+            name: userData.name
+          }
+        }
+      })
+      );
 
-      if (error) throw error;
+      if (error) {
+        setAuthError(error.message);
+        throw error;
+      }
       if (!data.user) throw new Error('No se pudo crear el usuario');
 
-      await supabase.from('profiles').insert({
+      // Create profile in database
+      const { error: profileError } = await supabase.from('profiles').insert({
         id: data.user.id,
         name: userData.name,
         role: userData.role || 'buyer',
@@ -391,6 +403,12 @@ export const useAuthProvider = () => {
         address: userData.address,
         phone_number: userData.phoneNumber
       });
+
+      if (profileError) {
+        console.error('Error creating profile:', profileError);
+        // Don't throw here as the user was created successfully
+        // The profile will be created later through the auth state change
+      }
 
       // El perfil se obtendrá automáticamente a través del listener de onAuthStateChange
     } catch (error) {
